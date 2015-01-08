@@ -17,24 +17,11 @@ To Do:
   
 =#
 
-#=
-export  closeDB,
-        initializeDB,
-        openDB,
-        refreshDB,
-        getBasisHash,
-        getVariable,
-        record,
-        convertArray,
-        fromIntDate,
-        toIntDate
-=#
-
 using Dates
 using HDF5
 
-const BASE_SOURCE = "../../data/base.h5"
-const DATABASE_SOURCE = "../../data/database.h5"
+const BASE_SOURCE = "../data/base.h5"
+const DATABASE_SOURCE = "../data/database.h5"
 
 ############################################################## Create Functions
 
@@ -69,7 +56,16 @@ function initializeDB()
 
     # Check if a database file is already initialized. If it is, save the old.
     if isfile(DATABASE_SOURCE)
-        run(`mv ../../data/database.h5 ../../data/database-old.h5`)
+        # Make sure the user wants to initialize the database.
+        println("Initializing the database will overwrite the contents of the current database. Do you want to continue? (Y/n)")
+        answer = readline(STDIN)
+        if lowercase(answer) in ["n\n", "no\n"]
+            return false
+        end
+
+        # Move the previous database to a new file just in case.
+        @linux_only run(`mv ../data/database.h5 ../data/database-old.h5`)
+        @windows_only run(`move ..\data\databse.h5 ..\data\database-old.h5`)
     end
 
     # Open the database file and base file.
@@ -79,7 +75,6 @@ function initializeDB()
     # Read in the initialization data.
     products = read(base["prods"])
     skus = read(base["skus"])
-    vars = read(base["vars"])
 
     # Close the base file.
     close(base)
@@ -87,7 +82,7 @@ function initializeDB()
     # Add each base product group.
     productsLength = length(products)
     for i = 1 : productsLength
-        productGroup = addProduct(database, products[i])
+        addProduct(database, products[i])
     end
 
     # Set the sku attribute for all base product groups.
@@ -135,191 +130,9 @@ end
 
 ########################################################## Manipulate Functions
 
-function getBasisHash(database::HDF5File)
+function addProduct(database::HDF5File, product::ASCIIString, attributes::Dict{Any,Any}=Dict(["sku"], -1))
     #=
-    Generate a hash table of skus to codes.
-
-    Args:
-      database (HDF5File): The HDF5 database file.
-
-    Returns:
-      Dict{Int64,ASCIIString}: The hash table to convert skus to codes.
-    =#
-
-    # Initialize variables.
-    products = names(database)
-    table = (Int64 => ASCIIString)[]
-
-    # For each product, get the corresponding sku from the database.
-    for product in products
-        table[read(attrs(database[product])["sku"])] = product
-    end
-
-    # Return the hash table.
-    return table
-end
-
-function getVariable(database::HDF5File, product::ASCIIString, variable::ASCIIString)
-    #=
-    Get the variable data.
-
-    Args:
-      database (HDF5File): The HDF5 database file.
-      product (ASCIIString): The product group the variable dataset will be
-        pulled from.
-      variable (ASCIIString): The variable title to pull from the product
-        group.
-
-    Returns:
-      Array{Float64,1}: The variable dataset pulled from the product group.
-    =#
-
-    # Check if the product and variable exist.
-    if !has(database, product) || !has(database[product], variable)
-        return []
-    end
-
-    # Return the variable dataset.
-    return read(database[product][variable])
-end
-
-function removeAttribute(database::HDF5File, product::ASCIIString, attribute::ASCIIString)
-    #=
-    Remove an attribute from a product group.
-
-    Args:
-      database (HDF5File): The HDF5 database file.
-      product (ASCIIString): The product group the attribute will be removed
-        from.
-      attribute (ASCIIString): The title of the attribute to remove.
-
-    Returns:
-      Bool: True if successful, false otherwise.
-    =#
-
-    # Check if the attribute is defined in the product group.
-    if !exists(attrs(database[product]), attribute)
-        return false
-    end
-
-    # Delete the attribute.
-    a_delete(database[product], attribute)
-
-    # Return successful.
-    return true
-end
-
-function removeProduct(database::HDF5File, product::ASCIIString)
-    #=
-    Remove a product group from the database.
-
-    Args:
-      database (HDF5File): The HDF5 database file.
-      product (ASCIIString): The product group to be removed from the database.
-
-    Returns:
-      Bool: True if successful, false otherwise.
-    =#
-
-    # Check if the product group is defined in the database.
-    if !has(database, product)
-        return false
-    end
-
-    # Delete the product group.
-    o_delete(database, product)
-
-    # Return successful.
-    return true
-end
-
-function removeVariable(database::HDF5File, product::ASCIIString, variable::ASCIIString)
-    #=
-    Remove a variable dataset from a product group.
-
-    Args:
-      database (HDF5File): The HDF5 database file.
-      product (ASCIIString): The product group the variable dataset will be
-        removed from.
-      variable (ASCIIString): The variable title to remove from the product
-        group.
-
-    Returns:
-      Bool: True if successful, false otherwise.
-    =#
-
-    # Check if the variable dataset is defined in the product group.
-    if !has(database[product], variable)
-        return false
-    end
-
-    # Delete the variable dataset.
-    o_delete(database[product], variable)
-
-    # Return successful.
-    return true
-end
-
-function setAttribute(database::HDF5File, product::ASCIIString, attribute::ASCIIString, value::Any)
-    #=
-    Set an attribute of a product group.
-
-    Args:
-      database (HDF5File): The HDF5 database file.
-      product (ASCIIString): The product group the attribute will be added to.
-      attribute (ASCIIString): The title of the attribute to add.
-      value (Any): What the value of the attribute will be.
-
-    Returns:
-      Bool: True if successful, false otherwise.
-    =#
-
-    # Check if the attribute is already defined in the product group, if so
-    # remove it
-    if exists(attrs(database[product]), attribute)
-        a_delete(database[product], attribute)
-    end
-
-    # Set the attribute.
-    attrs(database[product])[attribute] = value
-
-    # Return successful.
-    return true
-end
-
-function setVariable(database::HDF5File, product::ASCIIString, variable::ASCIIString, values::Array{Float64,2})
-    #=
-    Set a variable dataset in a product group.
-
-    Args:
-      database (HDF5File): The HDF5 database file.
-      product (ASCIIString): The product group the variable dataset will be
-        set to.
-      variable (ASCIIString): The variable title to add to the product group.
-      values (Array{Float64,1}): The variable dataset to add to the product
-        group.
-
-    Returns:
-      Bool: True if successful, false otherwise.
-    =#
-
-    # Check if the variable dataset is defined in the product group.
-    if has(database[product], variable)
-        o_delete(database[product], variable)
-    end
-
-    # Create the new variable dataset.
-    database[product][variable] = values
-
-    # Return successful.
-    return true
-end
-
-############################################################### Input Functions
-
-function addProduct(database::HDF5File, product::ASCIIString; attributes::Dict{Any,Any}=Dict())
-    #=
-    Add a product group to the database.
+    Add a product group to the database. (High Frequency)
 
     Args:
       database (HDF5File): The HDF5 database file.
@@ -372,15 +185,325 @@ function addSkus(database::HDF5File, codeSku::Array{Any,2})
     return true
 end
 
-function record(product::ASCIIString, variable::ASCIIString, data::Array{Float64,1}, dates::Array{Date,1}, overwrite::Bool=true)
+function addVariableToList(variable::ASCIIString)
     #=
-    Record variable data into the database.
+    Add a variable to the list of variables held in a database.
+
+    Args:
+      base (HDF5File): The HDF5 base file.
+      variable (ASCIIString): The variable to add to the list.
+
+    Returns:
+      Bool: True if successful, false otherwise.
+    =#
+
+    # Open the base file.
+    base = h5open(BASE_SOURCE, "r+")
+
+    # Get the previous list of variables
+    variables = read(base["vars"])
+
+    # Add the new variable to the list and resort.
+    variables = sort(vcat(variables, variable))
+
+    # Remove the old variable list from the database.
+    o_delete(base, "vars")
+
+    # Write the new variable list to the database.
+    base["vars"] = variables
+
+    # Close the base file.
+    closeDB(base)
+
+    # Return successful.
+    return true
+end
+
+function getBasisHash()
+    #=
+    Generate a hash table of skus to codes.
+
+    Args:
+      None
+
+    Returns:
+      Dict{Int64,ASCIIString}: The hash table to convert skus to codes.
+    =#
+
+    # Open the database.
+    database = openDB()
+
+    # Initialize variables.
+    products = names(database)
+    table = (Int64 => ASCIIString)[]
+
+    # For each product, get the corresponding sku from the database.
+    for product in products
+        table[read(attrs(database[product])["sku"])] = product
+    end
+
+    # Close the database.
+    closeDB(database)
+
+    # Return the hash table.
+    return table
+end
+
+function getProductList()
+    #=
+    Get a list of the currently assigned product groups.
+
+    Args:
+      None
+
+    Returns:
+      Array{ASCIIString}: The currently assigned product groups.
+    =#
+
+    # Open the database.
+    database = openDB()
+
+    # Extract the names of the product groups.
+    products = names(database)
+
+    # Close the database.
+    closeDB(database)
+
+    # Return the hash table.
+    return products
+end
+
+function getVariable(database::HDF5File, product::ASCIIString, variable::ASCIIString)
+    #=
+    Get the variable data. (High Frequency)
+
+    Args:
+      database (HDF5File): The HDF5 database file.
+      product (ASCIIString): The product group the variable dataset will be
+        pulled from.
+      variable (ASCIIString): The variable title to pull from the product
+        group.
+
+    Returns:
+      Array{Float64,1}: The variable dataset pulled from the product group.
+    =#
+
+    # Check if the product and variable exist.
+    if !has(database, product) || !has(database[product], variable)
+        return []
+    end
+
+    # Return the variable dataset.
+    return read(database[product][variable])
+end
+
+function getVariableList()
+    #=
+    Get a list of possible variable assignments.
+
+    Args:
+      None
+
+    Returns:
+      Array{ASCIIString,1}: The list of variables.
+    =#
+
+    # Open the database.
+    base = h5open(BASE_SOURCE, "r")
+
+    # Extract the names of the defined variables.
+    variableList = read(base["vars"])
+
+    # Close the database.
+    closeDB(base)
+
+    # Return the list of variables.
+    return variableList
+end
+
+function removeAttribute(database::HDF5File, product::ASCIIString, attribute::ASCIIString)
+    #=
+    Remove an attribute from a product group. (High Frequency)
+
+    Args:
+      database (HDF5File): The HDF5 database file.
+      product (ASCIIString): The product group the attribute will be removed
+        from.
+      attribute (ASCIIString): The title of the attribute to remove.
+
+    Returns:
+      Bool: True if successful, false otherwise.
+    =#
+
+    # Check if the attribute is defined in the product group.
+    if !exists(attrs(database[product]), attribute)
+        return false
+    end
+
+    # Delete the attribute.
+    a_delete(database[product], attribute)
+
+    # Return successful.
+    return true
+end
+
+function removeProduct(database::HDF5File, product::ASCIIString)
+    #=
+    Remove a product group from the database. (High Frequency?)
+
+    Args:
+      database (HDF5File): The HDF5 database file.
+      product (ASCIIString): The product group to be removed from the database.
+
+    Returns:
+      Bool: True if successful, false otherwise.
+    =#
+
+    # Check if the product group is defined in the database.
+    if !has(database, product)
+        return false
+    end
+
+    # Delete the product group.
+    o_delete(database, product)
+
+    # Return successful.
+    return true
+end
+
+function removeVariable(database::HDF5File, product::ASCIIString, variable::ASCIIString)
+    #=
+    Remove a variable dataset from a product group. (High Frequency?)
+
+    Args:
+      database (HDF5File): The HDF5 database file.
+      product (ASCIIString): The product group the variable dataset will be
+        removed from.
+      variable (ASCIIString): The variable title to remove from the product
+        group.
+
+    Returns:
+      Bool: True if successful, false otherwise.
+    =#
+
+    # Check if the variable dataset is defined in the product group.
+    if !has(database[product], variable)
+        return false
+    end
+
+    # Delete the variable dataset.
+    o_delete(database[product], variable)
+
+    # Return successful.
+    return true
+end
+
+function removeVariableFromList(variable::ASCIIString)
+    #=
+    Remove a variable from the list of variables held in a database.
+
+    Args:
+      base (HDF5File): The HDF5 base file.
+      variable (ASCIIString): The variable to remove from the list.
+
+    Returns:
+      Bool: True if successful, false otherwise.
+    =#
+
+    # Open the base file.
+    base = h5open(BASE_SOURCE, "r+")
+
+    # Get the previous variable list.
+    variables = read(base["vars"])
+
+    # Iterate through variables and remove the stated variable.
+    for i = 1 : length(variables)
+        if variables[i] == variable
+            deleteat!(variables, i)
+            break
+        end
+    end
+
+    # Remove the old variable list from the database.
+    o_delete(base, "vars")
+
+    # Write the new variable list to the database.
+    base["vars"] = variables
+
+    # Close the base file.
+    closeDB(base)
+
+    # Return successful.
+    return true
+end
+
+function setAttribute(database::HDF5File, product::ASCIIString, attribute::ASCIIString, value::Any)
+    #=
+    Set an attribute of a product group. (High Frequency)
+
+    Args:
+      database (HDF5File): The HDF5 database file.
+      product (ASCIIString): The product group the attribute will be added to.
+      attribute (ASCIIString): The title of the attribute to add.
+      value (Any): What the value of the attribute will be.
+
+    Returns:
+      Bool: True if successful, false otherwise.
+    =#
+
+    # Check if the attribute is already defined in the product group, if so
+    # remove it
+    if exists(attrs(database[product]), attribute)
+        a_delete(database[product], attribute)
+    end
+
+    # Set the attribute.
+    attrs(database[product])[attribute] = value
+
+    # Return successful.
+    return true
+end
+
+function setVariable(database::HDF5File, product::ASCIIString, variable::ASCIIString, values::Array{Float64,2})
+    #=
+    Set a variable dataset in a product group. (High Frequency)
+
+    Args:
+      database (HDF5File): The HDF5 database file.
+      product (ASCIIString): The product group the variable dataset will be
+        set to.
+      variable (ASCIIString): The variable title to add to the product group.
+      values (Array{Float64,1}): The variable dataset to add to the product
+        group.
+
+    Returns:
+      Bool: True if successful, false otherwise.
+    =#
+
+    # Check if the variable dataset is defined in the product group.
+    if has(database[product], variable)
+        o_delete(database[product], variable)
+    end
+
+    # Create the new variable dataset.
+    database[product][variable] = values
+
+    # Return successful.
+    return true
+end
+
+############################################################### Input Functions
+
+function record(product::ASCIIString, variable::ASCIIString, data::Array{Float64,1}, dates::Array{Date,1}, sku::Int64=-1, overwrite::Bool=true)
+    #=
+    Record/add new variable data into the database. (High Frequency)
 
     Args:
       product (ASCIIString): The product name for the dataset.
       variable (ASCIIString): The variable name of the dataset.
       data (Array{Float64,1}): The dataset to be recorded.
       dates (Array{Float64,1}): The date for each data point.
+      sku (Int64, optional): Only used when the product is new.
       overwrite (Bool, optional): True to overwrite old data, false otherwise.
 
     Returns:
@@ -398,7 +521,7 @@ function record(product::ASCIIString, variable::ASCIIString, data::Array{Float64
 
     # Check if the product has been created.
     if !has(database, product)
-        addProduct(database, product)
+        addProduct(database, product, Dict(["sku"], sku))
     end
 
     # Convert dates to integer dates.
@@ -430,106 +553,98 @@ end
 
 ############################################################## Helper Functions
 
-function convertArray(array::Array{Any,1})
+function checkMissingProducts()
     #=
-    Convert an array of type Any to an array of type ASCIIString.
+    Check the database for temporary product group names.
 
     Args:
-      array (Array{Any,1}): The array to be converted.
+      None
 
     Returns:
-      Array{ASCIIString,1}: The converted to a string array.
+    Array{Int64,1}: 
     =#
 
-    # Initialize variables.
-    arrayLength = length(array)
-    newArray = Array(ASCIIString, arrayLength)
+    # Open the database.
+    database = openDB()
 
-    # Convert each element of the array into a string.
-    for i = 1 : arrayLength
-        newArray[i] = string(array[i])
-    end
+    # Check all product groups for temporary titles ("TEMP").
+    products = names(database)
+    temporary(x) = x[1 : 4] == "TEMP"
+    tempIndex = find(temporary, products)
 
-    # Return the converted array.
-    return newArray
+    # Close the database.
+    closeDB(database)
+
+    # Return the list of temporary product group's skus.
+    return products[tempIndex]
 end
 
-function convertBasis(database::HDF5File, basis::Array{ASCIIString,1})
+function checkMissingSkus()
     #=
-    Check if the product codes in a basis array are in the database.
+    Check the database for product groups with missing skus.
 
     Args:
-      database (HDF5File): The HDF5 database file
-      basis (Array{ASCIIString,1}): An array of the product codes to be
-        checked.
+      None
 
     Returns:
-      Dict{ASCIIString,Int64}: The currently defined basis of product codes
-        linked to their original index.
-      Array{ASCIIString,1}: The product codes that are missing from the
-        database.
+      Array{ASCIIString,1}: 
     =#
 
-    # Initialize variables.
-    available = (ASCIIString => Int64)[]
-    missing = []
+    # Open the database.
+    database = openDB()
 
-    # Get the sku to code hash table.
-    basisHash = sku2code(database)
-    basisLength = length(basisHash)
+    # Check all product groups for missing skus (-1).
+    products = names(database)
+    missing(x) = read(attrs(database[x])["sku"]) == -1
+    missIndex = find(missing, products)
 
-    # Get the product codes.
-    basisCodes = values(basisHash)
+    # Close the database.
+    closeDB(database)
 
-    # Loop through the basis array and check if it is in the database.
-    for i = 1 : basisLength
-        if basis[i] in basisCodes
-            available[basis[i]] = i
-        else
-            missing = vcat(missing, basis[i])
-        end
-    end
-
-    # Retrun an array of missing values.
-    return available, missing
+    # Return the list of product groups with missing skus.
+    return products[missIndex]
 end
 
-function convertBasis(database::HDF5File, basis::Array{Int64,1})
+function findNextTemp()
     #=
-    Check if the sku codes in a basis array are in the database.
+    Find the next number for naming temporary product groups.
 
     Args:
-      database (HDF5File): The HDF5 database file
-      basis (Array{Int64,1}): An array of the sku codes to be checked.
+      None
 
     Returns:
-      Dict{ASCIIString,Int64}: The converted and currently defined basis of
-        product codes linked to their original index.
-      Array{Int64,1}: The sku codes that are missing from the database.
+      Int64: The next temporary count.
     =#
 
-    # Initialize variables.
-    available = (ASCIIString => Int64)[]
-    missing = []
+    # Open the database.
+    database = openDB()
 
-    # Get the sku to code hash table.
-    basisTable = basisHash(database)
-    basisLength = length(basisTable)
+    # Pull the product names from the database.
+    products = names(database)
 
-    # Get the sku codes.
-    basisCodes = keys(basisTable)
+    # Set a function to check for a "TEMP" string.
+    temporary(x) = x[1 : 4] == "TEMP"
 
-    # Loop through the basis array and check if it is in the database.
-    for i = 1 : basisLength
-        if basis[i] in basisCodes
-            available[basisTable[basis[i]]] = i
-        else
-            missing = vcat(missing, basis[i])
-        end
+    # Find the indeces of the "TEMP" products.
+    tempIndex = find(temporary, products)
+
+    # If no temporary product group exists return 1.
+    if length(tempIndex) == 0
+        return 1
     end
 
-    # Return an array of missing values.
-    return available, missing
+    # Get a list of the temps and extract the numerical parts.
+    temps = products[tempIndex]
+    tempNumber = []
+    for temp in temps
+        tempNumber = vcat(tempNumber, int(temp[6 : end]))
+    end
+
+    # Close the database.
+    closeDB(database)
+
+    # Return the maximum temporary value plus one.
+    return maximum(tempNumber) + 1
 end
 
 function fromIntDate(intDate::Int64)
@@ -617,24 +732,6 @@ function mergeData(oldData::Array{Float64,2}, newData::Array{Float64,2}, overwri
     return merged[!repeats, :]
 end
 
-function toIntDate(year::Int64, month::Int64, day::Int64)
-    #=
-    Convert the year, month, and day into a single integer representation of
-      the date.
-
-    Args:
-      year (Int64): The year.
-      month (Int64): The month.
-      day (Int64): The day.
-
-    Returns:
-      Int64: The integer representation of the date.
-    =#
-
-    # Return the integer date.
-    return year * 10000 + month * 100 + day
-end
-
 function toIntDate(date::Date)
     #=
     Convert a Date object into a single integer representation of the date.
@@ -648,38 +745,6 @@ function toIntDate(date::Date)
 
     # Return the integer date.
     return year(date) * 10000 + month(date) * 100 + day(date)
-end
-
-function toIntDate(years::Array{Int64,1}, months::Array{Int64,1}, days::Array{Int64,1})
-    #=
-    Convert the year, month, and day into a single integer representation of
-      the date.
-
-    Args:
-      years (Array{Int64,1}): The years.
-      months (Array{Int64,1}): The months.
-      days (Array{Int64,1}): The days.
-
-    Returns:
-      Array{Int64,1}: The integer representations of the dates.
-    =#
-
-    # Initialize variables.
-    lengthDates = length(years)
-
-    # Check for invalid inputs.
-    if lengthDates != length(months) || lengthDates != length(days)
-        error("toIntDate: 'years', 'months', and 'days' must all be the same length.")
-    end
-
-    # Iterate through the arrays, calling the single time function.
-    intDates = Array(Int64, lengthDates)
-    for i = 1 : lengthDates
-        intDates[i] = toIntDate(years[i], months[i], days[i])
-    end
-
-    # Return the converted dates.
-    return intDates
 end
 
 function toIntDate(dates::Array{Date,1})

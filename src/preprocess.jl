@@ -1,4 +1,4 @@
-module Preprocess
+#module Preprocess
 #=
 Preprocess
 
@@ -9,16 +9,74 @@ Needs:
   Dates
 
 Examples:
-  
+  importMultiTime("../data/2014-12.csv", "finished-goods", "mm/yy")
 
 To Do:
   
 =#
 
-using Dates
+include("database.jl")
 
 const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
 const DATE_SEPARATORS = ['/', '-', ':', '.', ' ']
+
+############################################################### Write Functions
+
+function writeGeneric(data::Array{Any,2}, header::Array{Any,2}, variable::ASCIIString)
+    #=
+    Write the generic form of data into the database.
+
+    Args:
+      data (Array{Any,2}): The data to be written to the database.
+      header (Array{Any,2}): The header values including dates.
+      variable (ASCIIString): The variable the dataset represents.
+
+    Returns:
+      Bool: True if successful, false otherwise.
+    =#
+
+    # Convert the basis values into the proper type.
+    if isa(data[1, 1], Number)
+        # The basis are numerical, so they must be skus.
+        basis = convert(Array{Int64,1}, data[:, 1])
+    else
+        # The basis are nonumerical, so they must be product codes.
+        basis = convertArray(data[:, 1])
+    end
+
+    # Check if the basis values are in the database and convert them to
+    # product codes if skus.
+    (available, missing) = convertBasis(basis)
+
+    # Loop through each column adding the available data to the database.
+    for (product, index) in available
+        (dataFinal, headerFinal) = trimLeadingZeros(convert(Array{Float64,1}, vec(data[index, 2 : end])), convert(Array{Date,1}, header[2 : end]))
+        record(product, variable, dataFinal, headerFinal)
+    end
+
+    # Add the missing data to the database, creating temporary titles for
+    # missing product codes and flagging missing skus.
+    missingType = typeof(missing)
+    if missingType == Dict{ASCIIString,Int64}
+        # Create new products through the record function and add the data.
+        for (product, index) in missing
+            record(product, variable, convert(Array{Float64,1}, vec(data[index, 2 : end])), convert(Array{Date,1}, header[2 : end]))
+        end
+    elseif missingType == Dict{Int64,Int64}
+        # Determine the next temporary count.
+        tempIndex = findNextTemp()
+        # Create new products with the sku given and a temporary title.
+        for (sku, index) in missing
+            record(string("TEMP-", tempIndex), variable, convert(Array{Float64,1}, vec(data[index, 2 : end])), convert(Array{Date,1}, header[2 : end]), sku)
+            tempIndex += 1
+        end
+    end
+
+    # Return successful.
+    return true
+end
+
+########################################################## Preprocess Functions
 
 function importMultiTime(source::ASCIIString, variable::ASCIIString, dateFormat::ASCIIString)
     #=
@@ -33,6 +91,12 @@ function importMultiTime(source::ASCIIString, variable::ASCIIString, dateFormat:
     Returns:
       Bool: True if successfully imported, false otherwise.
     =#
+
+    # Make sure the variable is allowed.
+    variableList = getVariableList()
+    if !(variable in variableList)
+        error("importMultiTime: The input variable, ", variable, ", is not a defined variable. Please define it.")
+    end
 
     # Read the data and header from the file.
     (data, header) = readdlm(source, ',', header=true)
@@ -53,13 +117,16 @@ function importMultiTime(source::ASCIIString, variable::ASCIIString, dateFormat:
     # Aggregate repeats.
     (data, repeats) = aggregate(data)
 
-    # Rediscretize if monthly. (Add additional rediscretizations)
+    # Rediscretize if not monthly. (Add additional rediscretizations here)
     if 'w' in lowercase(dateFormat)
         (data, headerAny) = rediscretize(data, headerAny, 'm')
     end
 
-    # Return the data and header.
-    return data, headerAny
+    # Write the data to the database.
+    writeGeneric(data, headerAny, variable)
+
+    # Return successful.
+    return true
 end
 
 function importMultiSingleTime(sources::Array{ASCIIString,1}, dates::Array{Date,1}, singular::Bool=true)
@@ -111,15 +178,28 @@ function importMultiSingleTime(sources::Array{ASCIIString,1}, dates::Array{Date,
     # Set the headers with dates.
     timeHeader = vcat(header[1], dates)
 
-    # Rediscretize for nonsingular variables.
-    if !singular
-        for k = 1 : variablesLength
-            (combData[k], timeHeader) = rediscretize(combData[k], timeHeader, 'm')
+    # Match the dates with the proper discretization.
+    if singular
+        # Change the dates to match the database convention.
+        # Could call singularCut() here.
+        for ii = 2 : datesLength + 1
+            timeHeader[ii] = Date(year(timeHeader[ii]), month(timeHeader[ii]), 1)
+        end
+    else
+        # Rediscretize for nonsingular variables.
+        # If a list of nonsingular variables is input do for var in nonSing.
+        for jj = 1 : variablesLength
+            (combData[jj], timeHeader) = rediscretize(combData[jj], timeHeader, 'm')
         end
     end
 
-    # Return the data, header, and variables defining each index of combData.
-    return combData, timeHeader, variables
+    # Write the data to the database.
+    for kk = 1 : variablesLength
+        writeGeneric(combData[kk], timeHeader, variable[kk])
+    end
+
+    # Return successful.
+    return true
 end
 
 function importSingleTime(source::ASCIIString, date::Date)
@@ -132,7 +212,8 @@ function importSingleTime(source::ASCIIString, date::Date)
       date (ASCIIString): The date the file represents.
 
     Returns:
-      Bool: True if successfully imported, false otherwise.
+      Array{Any,2}: The data extracted from the file.
+      Array{Any,2}: The header extracted from the file.
     =#
 
     # Read the data and header from the file.
@@ -148,56 +229,7 @@ function importSingleTime(source::ASCIIString, date::Date)
     return data, header
 end
 
-function stitch(data::Array{Any,2})
-    #=
-    Combine an array of arrays matching the first columns where each major
-    index is appended.
-
-    Args:
-      data (Array{Any,2}): The multidimentional array to be combined.
-
-    Returns:
-      Array{Any,2}: The new stitched together array.
-    =#
-
-    # Copy data and initialize variables.
-    dataCopy = copy(data)
-    (ds, arb) = size(dataCopy)
-
-    # Find the maximum number of rows in all of the data and its index.
-    maxRows = -1
-    maxIndx = 0
-    for i = 1 : ds
-        rows = size(dataCopy[i])[1]
-        if rows > maxRows
-            maxRows = rows
-            maxIndx = i
-        end
-    end
-
-    # Initialize the final stitched array.
-    final = Array(Any, maxRows, ds + 1)
-    final[:, 1] = dataCopy[maxIndx][:, 1]
-
-    # Match each first column with the output's first column.
-    for j = 1 : ds
-        rows = size(dataCopy[j])[1]
-        for k = 1 : rows
-            for ii = 1 : maxRows
-                if dataCopy[j][k, 1] == final[ii, 1]
-                    final[ii, j + 1] = dataCopy[j][k, 2]
-                    break
-                end
-            end
-        end
-    end
-
-    # Zero out any undefined data.
-    final = zeroOut(final)
-
-    # Return the stitched data.
-    return final
-end
+############################################################## Helper Functions
 
 function aggregate(data::Array{Any,2})
     #=
@@ -240,6 +272,106 @@ function aggregate(data::Array{Any,2})
 
     # Return only the defined rows and number of repeats.
     return agg[rowsDefined, :], repeats
+end
+
+function convertArray(array::Array{Any,1})
+    #=
+    Convert an array of type Any to an array of type ASCIIString.
+
+    Args:
+      array (Array{Any,1}): The array to be converted.
+
+    Returns:
+      Array{ASCIIString,1}: The converted to a string array.
+    =#
+
+    # Initialize variables.
+    arrayLength = length(array)
+    newArray = Array(ASCIIString, arrayLength)
+
+    # Convert each element of the array into a string.
+    for i = 1 : arrayLength
+        newArray[i] = string(array[i])
+    end
+
+    # Return the converted array.
+    return newArray
+end
+
+function convertBasis(basis::Array{ASCIIString,1})
+    #=
+    Check if the product codes in a basis array are in the database.
+
+    Args:
+      basis (Array{ASCIIString,1}): An array of the product codes to be
+        checked.
+
+    Returns:
+      Dict{ASCIIString,Int64}: The currently defined basis of product codes
+        linked to their original index.
+      Dict{ASCIIString,Int64}: The missing product codes from the database
+        linked to their original index.
+    =#
+
+    # Initialize variables.
+    available = (ASCIIString => Int64)[]
+    missing = (ASCIIString => Int64)[]
+
+    # Get the sku to code hash table.
+    basisList = getProductList()
+    basisLength = length(basis)
+
+    # Loop through the basis array and check if it is in the database.
+    for i = 1 : basisLength
+        if basis[i] in basisList
+            available[basis[i]] = i
+        else
+            missing[basis[i]] = i
+        end
+    end
+
+    # Return dictionaries pointing each available and missing product to its
+    # original index.
+    return available, missing
+end
+
+function convertBasis(basis::Array{Int64,1})
+    #=
+    Check if the sku codes in a basis array are in the database.
+
+    Args:
+      basis (Array{Int64,1}): An array of the sku codes to be checked.
+
+    Returns:
+      Dict{ASCIIString,Int64}: The currently defined basis of product codes
+        linked to their original index.
+      Dict{Int64,Int64}: The missing product codes from the database
+        linked to their original index.
+    =#
+
+    # Initialize variables.
+    available = (ASCIIString => Int64)[]
+    missing = (Int64 => Int64)[]
+
+    # Get the sku to code hash table.
+    basisHash = getBasisHash()
+    basisLength = length(basis)
+
+    # Get the sku codes.
+    basisCodes = keys(basisHash)
+
+    # Loop through the basis array and check if it is in the database.
+    for i = 1 : basisLength
+        if basis[i] in basisCodes
+            available[basisHash[basis[i]]] = i
+        else
+            missing[basis[i]] = i
+        end
+    end
+
+    # Return dictionaries pointing each available and missing product to its
+    # original index.
+    return available, missing
 end
 
 function rediscretize(data::Array{Any,2}, header::Array{Any,2}, to::Char)
@@ -295,6 +427,57 @@ function singularCut(data::Array{Array,2}, header::Array{Any,2}, to::Char)
     =#
 end
 
+function stitch(data::Array{Any,2})
+    #=
+    Combine an array of arrays matching the first columns where each major
+    index is appended.
+
+    Args:
+      data (Array{Any,2}): The multidimentional array to be combined.
+
+    Returns:
+      Array{Any,2}: The new stitched together array.
+    =#
+
+    # Copy data and initialize variables.
+    dataCopy = copy(data)
+    (ds, arb) = size(dataCopy)
+
+    # Find the maximum number of rows in all of the data and its index.
+    maxRows = -1
+    maxIndx = 0
+    for i = 1 : ds
+        rows = size(dataCopy[i])[1]
+        if rows > maxRows
+            maxRows = rows
+            maxIndx = i
+        end
+    end
+
+    # Initialize the final stitched array.
+    final = Array(Any, maxRows, ds + 1)
+    final[:, 1] = dataCopy[maxIndx][:, 1]
+
+    # Match each first column with the output's first column.
+    for j = 1 : ds
+        rows = size(dataCopy[j])[1]
+        for k = 1 : rows
+            for ii = 1 : maxRows
+                if dataCopy[j][k, 1] == final[ii, 1]
+                    final[ii, j + 1] = dataCopy[j][k, 2]
+                    break
+                end
+            end
+        end
+    end
+
+    # Zero out any undefined data.
+    final = zeroOut(final)
+
+    # Return the stitched data.
+    return final
+end
+
 function sortAll(data::Array{Any,2}, header::Array{Any,2})
     #=
     Sort the rows based on the first column and the columns based on the
@@ -347,6 +530,113 @@ function sortAll(data::Array{Float64,2}, header::Array{String,2})
 
     # Return the new sorted data and header.
     return dataCopy[2 : end, :], dataCopy[1, :]
+end
+
+function trimLeadingZeros(data::Array{Float64,1}, header::Array{Date,1})
+    #=
+    Remove leading zeros from the dataset. This assumes the data is already
+    ordered chronologically.
+
+    Args:
+      data (Array{Float64,1}): 
+
+    Returns:
+      Array{Float64,1}: The data with leading zeros removed.
+    =#
+
+    # Find the first nonzero element.
+    for i = 1 : length(data)
+        if data[i] != 0.0
+            first = i
+
+            # Return the data from the first nonzero element to the end.
+            return data[i : end], header[i : end]
+        end
+    end
+
+    # If no nonzero elements exist, return the last element.
+    return [data[end]], [header[end]]
+end
+
+function zeroOut(data::Array{Any,2})
+    #=
+    Add zeros to a dataset where ever missining data exists.
+
+    Args:
+      data (Array{Any,2}): The data to zero out.
+
+    Returns:
+      Array{Any,2}: The data with zeros substituted for empty strings.
+    =#
+
+    # Initialize variables.
+    (rows, cols) = size(data)
+
+    # Loop through all elements of the array setting "" to 0.
+    for j = 1 : cols, i = 1 : rows
+        if !isdefined(data, i, j) || data[i, j] == ""
+            data[i, j] = 0.0
+        end
+    end
+
+    # Return the new data.
+    return data
+end
+
+################################################### Date Manipulation Functions
+
+function ord2date(dayOfYear::Int64, year::Int64)
+    #=
+    Convert an ordinal date to a Date object.
+
+    Args:
+    dayOfYear (Int64): The day number within a year.
+    year (Int64): The year.
+
+    Returns:
+      Date: The converted ordinal date to a Date object.
+    =#
+
+    # Initialize the start days for each month.
+    monthStarts = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
+
+    # If it is a leap year add a day to the correct months.
+    if year % 4 == 0
+        monthStarts = vcat(monthStarts[1 : 2], monthStarts[3 : end] + 1)
+    end
+
+    # Determine the month of the day of year.
+    if dayOfYear < monthStarts[2]
+        month = 1
+    elseif dayOfYear < monthStarts[3]
+        month = 2
+    elseif dayOfYear < monthStarts[4]
+        month = 3
+    elseif dayOfYear < monthStarts[5]
+        month = 4
+    elseif dayOfYear < monthStarts[6]
+        month = 5
+    elseif dayOfYear < monthStarts[7]
+        month = 6
+    elseif dayOfYear < monthStarts[8]
+        month = 7
+    elseif dayOfYear < monthStarts[9]
+        month = 8
+    elseif dayOfYear < monthStarts[10]
+        month = 9
+    elseif dayOfYear < monthStarts[11]
+        month = 10
+    elseif dayOfYear < monthStarts[12]
+        month = 11
+    else
+        month = 12
+    end
+
+    # Determine the day of month.
+    day = dayOfYear - monthStarts[month] + 1
+
+    # Return the Date object.
+    return Date(year, month, day)
 end
 
 function str2date(date::SubString{ASCIIString}, format::ASCIIString)
@@ -483,83 +773,4 @@ function week2date(year::Int64, week::Int64, day::Int64)
     return ord2date(ord, year)
 end
 
-function ord2date(dayOfYear::Int64, year::Int64)
-    #=
-    Convert an ordinal date to a Date object.
-
-    Args:
-    dayOfYear (Int64): The day number within a year.
-    year (Int64): The year.
-
-    Returns:
-      Date: The converted ordinal date to a Date object.
-    =#
-
-    # Initialize the start days for each month.
-    monthStarts = [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
-
-    # If it is a leap year add a day to the correct months.
-    if year % 4 == 0
-        monthStarts = vcat(monthStarts[1 : 2], monthStarts[3 : end] + 1)
-    end
-
-    # Determine the month of the day of year.
-    if dayOfYear < monthStarts[2]
-        month = 1
-    elseif dayOfYear < monthStarts[3]
-        month = 2
-    elseif dayOfYear < monthStarts[4]
-        month = 3
-    elseif dayOfYear < monthStarts[5]
-        month = 4
-    elseif dayOfYear < monthStarts[6]
-        month = 5
-    elseif dayOfYear < monthStarts[7]
-        month = 6
-    elseif dayOfYear < monthStarts[8]
-        month = 7
-    elseif dayOfYear < monthStarts[9]
-        month = 8
-    elseif dayOfYear < monthStarts[10]
-        month = 9
-    elseif dayOfYear < monthStarts[11]
-        month = 10
-    elseif dayOfYear < monthStarts[12]
-        month = 11
-    else
-        month = 12
-    end
-
-    # Determine the day of month.
-    day = dayOfYear - monthStarts[month] + 1
-
-    # Return the Date object.
-    return Date(year, month, day)
-end
-
-function zeroOut(data::Array{Any,2})
-    #=
-    Add zeros to a dataset where ever missining data exists.
-
-    Args:
-      data (Array{Any,2}): The data to zero out.
-
-    Returns:
-      Array{Any,2}: The data with zeros substituted for empty strings.
-    =#
-
-    # Initialize variables.
-    (rows, cols) = size(data)
-
-    # Loop through all elements of the array setting "" to 0.
-    for j = 1 : cols, i = 1 : rows
-        if !isdefined(data, i, j) || data[i, j] == ""
-            data[i, j] = 0.0
-        end
-    end
-
-    # Return the new data.
-    return data
-end
-
-end # module Preprocess
+#end # module Preprocess
