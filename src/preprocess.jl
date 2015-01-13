@@ -15,13 +15,17 @@ To Do:
   
 =#
 
+############################################################### Use Declaration
 include("database.jl")
+import Base.lowercase
+###############################################################################
 
-const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+########################################################## Constant Declaration
 const DATE_SEPARATORS = ['/', '-', ':', '.', ' ']
+const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+###############################################################################
 
 ############################################################### Write Functions
-
 function writeGeneric(data::Array{Any,2}, header::Array{Any,2}, variable::ASCIIString)
     #=
     Write the generic form of data into the database.
@@ -75,13 +79,13 @@ function writeGeneric(data::Array{Any,2}, header::Array{Any,2}, variable::ASCIIS
     # Return successful.
     return true
 end
+###############################################################################
 
 ########################################################## Preprocess Functions
-
 function importMultiTime(source::ASCIIString, variable::ASCIIString, dateFormat::ASCIIString)
     #=
     Import a timeseries (multi time) file. The file must be in the header
-    format [Basis, Time_1, Time_2, ..., Time_n].
+    format [Basis, Date_1, Date_2, ..., Date_n].
 
     Args:
       source (ASCIIString): The file location on the disk.
@@ -97,6 +101,9 @@ function importMultiTime(source::ASCIIString, variable::ASCIIString, dateFormat:
     if !(variable in variableList)
         error("importMultiTime: The input variable, ", variable, ", is not a defined variable. Please define it.")
     end
+
+    # Copy the source file to the imported directory and change the name.
+    #cp(source, string("../data/imported/", now(), "|", variable))
 
     # Read the data and header from the file.
     (data, header) = readdlm(source, ',', header=true)
@@ -126,6 +133,100 @@ function importMultiTime(source::ASCIIString, variable::ASCIIString, dateFormat:
     writeGeneric(data, headerAny, variable)
 
     # Return successful.
+    return true
+end
+
+function importMultiMultiTime(source::ASCIIString, dateFormat::ASCIIString)
+    #=
+    Import a timeseries (multi time) file with multiple variables. The file
+      must be in the header format [Basis, Var._1, Var._2, ..., Var._n, Date].
+
+    Args:
+      source (ASCIIString): The file location on the disk.
+      dateFormat (ASCIIString): Abstract representation of the date.
+
+    Returns:
+      Bool: True if successfully imported, false otherwise.
+    =#
+
+    # Read the data and the header from the file.
+    (data, header) = readdlm(source, ',', header=true)
+
+    # Reduce the file and set the headers to be the correct variable names.
+    (dataNew, headerNew) = reduceData(data, header)
+
+    # Find the column index that represents the date.
+    dateColumn = findfirst(headerNew, "date")
+
+    # If no date column is found, throw an error.
+    if dateColumn == 0
+        error("importMultiMultiTime: No date column was found.")
+    end
+
+    # Extract the date column.
+    datesStr = dataNew[:, dateColumn]
+
+    # Create the new dates array.
+    dates = Array(Date, length(datesStr))
+
+    # If the imported dates are numbers, convert to a string.
+    if isa(datesStr[1], Number)
+        datesStr = convertArray(int(datesStr))
+    end
+
+    # Convert the date column into Date objects.
+    for i = 1 : length(datesStr)
+        dates[i] = str2date(datesStr[i], dateFormat)
+    end
+
+    # Find basis column.
+    basisColumn = findfirst(headerNew, "basis")
+
+    # If no basis column is found, throw an error.
+    if basisColumn == 0
+        error("importMultiMultiTime: No basis column was found.")
+    end
+
+    # Extract the basis column.
+    basis = dataNew[:, basisColumn]
+
+    # Remove the date and basis columns from the data.
+    (dataNew, headerNew) = removeColumns(dataNew, [basisColumn, dateColumn], headerNew)
+
+    # Find the starting index of each repeated basis.
+    (obs, vars) = size(dataNew)
+    check = basis[1]
+    starts = [1]
+    for j = 2 : obs
+        if basis[j] != check
+            check = basis[j]
+            starts = vcat(starts, j)
+        end
+    end
+
+    # Break the data into separate arrays for each basis.
+    startsLength = length(starts)
+    separate = Array(Any, startsLength)
+    for k = 1 : startsLength - 1
+        separate[k] = dataNew[starts[k] : starts[k + 1] - 1, :]
+    end
+    separate[end] = dataNew[starts[end] : end, :]
+
+    pvData = []
+    for ii = 1 : startsLength
+        for jj = 1 : length(headerNew)
+            pvData = separate[ii][:, jj]
+
+            if ii != startsLength
+                currentDates = dates[starts[ii] : starts[ii + 1] - 1]
+            else
+                currentDates = dates[starts[ii] : end]
+            end
+            (dada, cont) = rediscretize(vcat(basis[starts[ii]], separate[ii][:, jj])', vcat("basis", currentDates)', 'm')
+            writeGeneric(dada, cont, headerNew[jj])
+        end
+    end
+
     return true
 end
 
@@ -195,7 +296,7 @@ function importMultiSingleTime(sources::Array{ASCIIString,1}, dates::Array{Date,
 
     # Write the data to the database.
     for kk = 1 : variablesLength
-        writeGeneric(combData[kk], timeHeader, variable[kk])
+        writeGeneric(combData[kk], timeHeader', convert(ASCIIString, variables[kk]))
     end
 
     # Return successful.
@@ -228,9 +329,9 @@ function importSingleTime(source::ASCIIString, date::Date)
     # Return the data and header.
     return data, header
 end
+###############################################################################
 
 ############################################################## Helper Functions
-
 function aggregate(data::Array{Any,2})
     #=
     Aggregate (sum) the data over repeated first column values. The data must
@@ -272,6 +373,26 @@ function aggregate(data::Array{Any,2})
 
     # Return only the defined rows and number of repeats.
     return agg[rowsDefined, :], repeats
+end
+
+function convertArray(array::Array{Int64,1})
+    #=
+
+
+
+    =#
+
+    # Initialize variables.
+    arrayLength = length(array)
+    newArray = Array(ASCIIString, arrayLength)
+
+    # Convert each element of the array into a string.
+    for i = 1 : arrayLength
+        newArray[i] = string(array[i])
+    end
+
+    # Return the converted array.
+    return newArray
 end
 
 function convertArray(array::Array{Any,1})
@@ -374,6 +495,93 @@ function convertBasis(basis::Array{Int64,1})
     return available, missing
 end
 
+function lowercase(x::Array{ASCIIString,1})
+    #=
+    Convert an array of strings to all lowercase.
+
+    Args:
+      x (Array{ASCIIString,1}): The array of strings to convert to lowercase.
+
+    Returns:
+      Array{ASCIIString,1}: The lowercase array of strings.
+    =#
+
+    # Initialize variables.
+    xLength = length(x)
+    xLower = Array(ASCIIString, xLength)
+
+    # Convert each element to lowercase.
+    for i = 1 : xLength
+        xLower[i] = lowercase(x[i])
+    end
+
+    # Return the new array.
+    return xLower
+end
+
+function reduceData(data::Array{Any,2}, header::Array{String,2}, remove::Array{Int64,1}=[-1])
+    #=
+    Remove unecessary columns from a file, match the headers with known
+    variables, and write the file into the 'imported' directory.
+
+    Args:
+      data (Array{Any,2}): The data.
+      header (Array{String,2}): The header.
+      remove (Array{Int64,1}): An array of index locations representing
+        columns that should be removed.
+
+    Returns:
+      Array{Any,2}: 
+      Array{String,2}
+    =#
+
+    # Remove the designated columns.
+    if remove[1] != -1
+        (data, header) = removeColumns(data, remove, header)
+    end
+
+    # Make a copy for comparison.
+    dataNew = copy(data)
+    headerNew = copy(header)
+    headerLower = lowercase(convert(Array{ASCIIString,1}, vec(headerNew)))
+
+    # Get the dictionary relating variables to titles.
+    variableDict = getVariableToTitle()
+
+    # Create an empty vector to record missing titles in the base file.
+    missing = []
+    ignore = []
+
+    # Loop through the headers and find the name of each.
+    for i = 1 : length(headerNew)
+        for (variable, titles) in variableDict
+            if headerLower[i] in titles
+                headerNew[i] = variable
+                if variable == "ignore"
+                    ignore = vcat(ignore, i)
+                end
+                break
+            end
+        end
+
+        # Catch the missing condition.
+        if headerNew[i] == header[i]
+            missing = vcat(missing, i)
+        end
+    end
+
+    # Add all missing titles to the missing variable.
+    if length(missing) > 0
+        addToVariableTitles("missing", headerLower[missing])
+    end
+
+    # Remove ignored and missing columns.
+    (dataNew, headerNew) = removeColumns(dataNew, vcat(missing, ignore), headerNew)
+
+    # Return the new data and header.
+    return dataNew, headerNew'
+end
+
 function rediscretize(data::Array{Any,2}, header::Array{Any,2}, to::Char)
     #=
     Rediscretize by aggregation to a higher level discretization. The dates in
@@ -412,6 +620,64 @@ function rediscretize(data::Array{Any,2}, header::Array{Any,2}, to::Char)
 
     # Return the rediscretized data and header.
     return dataCopy[:, 2 : end]', dataCopy[:, 1]'
+end
+
+function removeColumns(data::Array{Any,2}, remove::Array{Int64,1}, header::Array{String,2}=[""])
+    #=
+    Remove a list of columns from data.
+
+    Args:
+      data (Array{Any,2}): The data.
+      remove (Array{Int64,1}): An array of index locations representing
+        columns that should be removed.
+      header (Array{String,2}, optional): The header.
+
+    Returns:
+      Array{Any,2}: The data with the given columns removed.
+      Array{String,2}, optional: The header with the given columns removed.
+    =#
+
+    # Create a vector of the column indices to keep.
+    keep = [1 : size(data)[2]]
+
+    # Remove any indices given by the remove array.
+    deleteat!(keep, remove)
+
+    # Return the data with the columns removed and the header if given.
+    if length(header[1]) == 0
+        return data [:, keep]
+    else
+        return data[:, keep], header[keep]
+    end
+end
+
+function removeColumns(data::Array{Any,2}, remove::Array{Int64,1}, header::Array{ASCIIString,1}=[""])
+    #=
+    Remove a list of columns from data.
+
+    Args:
+      data (Array{Any,2}): The data.
+      remove (Array{Int64,1}): An array of index locations representing
+        columns that should be removed.
+      header (Array{String,2}, optional): The header.
+
+    Returns:
+      Array{Any,2}: The data with the given columns removed.
+      Array{String,2}, optional: The header with the given columns removed.
+    =#
+
+    # Create a vector of the column indices to keep.
+    keep = [1 : size(data)[2]]
+
+    # Remove any indices given by the remove array.
+    deleteat!(keep, remove)
+
+    # Return the data with the columns removed and the header if given.
+    if length(header[1]) == 0
+        return data [:, keep]
+    else
+        return data[:, keep], header[keep]
+    end
 end
 
 function singularCut(data::Array{Array,2}, header::Array{Any,2}, to::Char)
@@ -532,6 +798,33 @@ function sortAll(data::Array{Float64,2}, header::Array{String,2})
     return dataCopy[2 : end, :], dataCopy[1, :]
 end
 
+function sortAll(data::Array{Any,2}, header::Array{String,2})
+    #=
+    Sort the rows based on the first column and the columns based on the
+    header.
+
+    Args:
+      data (Array{Float64,2}): The data to be sorted.
+      header (Array{String,2}): The header to be sorted.
+
+    Returns:
+      Array{Any,2}: The sorted data.
+      Array{Any,2}: The sorted header.
+    =#
+
+    # Make copies of the data and header as to not alter the original.
+    dataCopy = copy(data)
+    headerCopy = copy(header)
+
+    # Sort the data such that the rows are ordered by the IDs and the
+    # columns are ordered by the header dates.
+    dataCopy = vcat(headerCopy, sortrows(dataCopy))
+    dataCopy = hcat(dataCopy[:, 1], sortcols(dataCopy[:, 2 : end]))
+
+    # Return the new sorted data and header.
+    return dataCopy[2 : end, :], dataCopy[1, :]
+end
+
 function trimLeadingZeros(data::Array{Float64,1}, header::Array{Date,1})
     #=
     Remove leading zeros from the dataset. This assumes the data is already
@@ -582,9 +875,9 @@ function zeroOut(data::Array{Any,2})
     # Return the new data.
     return data
 end
+###############################################################################
 
 ################################################### Date Manipulation Functions
-
 function ord2date(dayOfYear::Int64, year::Int64)
     #=
     Convert an ordinal date to a Date object.
@@ -637,6 +930,108 @@ function ord2date(dayOfYear::Int64, year::Int64)
 
     # Return the Date object.
     return Date(year, month, day)
+end
+
+function str2date(date::ASCIIString, format::ASCIIString)
+    #=
+    Convert a string to a date.
+
+    Args:
+      date (SubString{ASCIIString}): The date to be converted.
+      format (ASCIIString): An abstract representation of the date.
+
+    Returns:
+      Date: The converted date into a Date object.
+    =#
+
+    # Make sure the lengths of date and format are the same.
+    if length(date) != length(format)
+        error("str2date: The lengths of 'date' and 'format' must match.")
+    end
+
+    # Initialize variables.
+    formatLower = lowercase(format)
+    year = ""
+    month = ""
+    week = ""
+    day = ""
+
+    # Loop through the format and assign the components of the date.
+    for i = 1 : length(formatLower)
+        if formatLower[i] in DATE_SEPARATORS
+            continue
+        elseif formatLower[i] == 'y'
+            year = string(year, date[i])
+        elseif formatLower[i] == 'm'
+            month = string(month, date[i])
+        elseif formatLower[i] == 'w'
+            week = string(week, date[i])
+        elseif formatLower[i] == 'd'
+            day = string(day, date[i])
+        else
+            error("str2date: Functionality for ", format[i], " has not yet been implemented.")
+        end
+    end
+
+    # Standardize the year.
+    yearLength = length(year)
+
+    if yearLength == 4
+        # Catch full years and do nothing.
+    elseif yearLength == 2
+        # Determine the correct millenium when two characters define year.
+        currentYear = string(Dates.year(today()))
+        if year <= currentYear[3 : 4]
+            year = string(currentYear[1 : 2], year)
+        else
+            year = string(int(currentYear[1 : 2]) - 1, year)
+        end
+    else
+        # Catch nondefined lengths for year and throw an error.
+        error("str2date: '", year, "' is not a valid year.")
+    end
+
+    # Standardize the day.
+    dayLength = length(day)
+
+    if dayLength == 0
+        # if no day is given assume first day of month.
+        day = "1"
+    elseif dayLength < 3
+        # Catch possible day lengths and do nothing.
+    else
+        error("str2date: '", day, "' is not a valid day.")
+    end
+
+    # Standardize the month.
+    monthLength = length(month)
+    monthLower = lowercase(month)
+
+    if monthLength == 0
+        # A week number must have been given.
+        return week2date(int(year), int(week), int(day))
+    elseif monthLength < 3
+        # If less than three characters define month then assume its numerical.
+    elseif monthLength == 3
+        # Include the first three letters of a month as a valid input.
+        for j = 1 : length(MONTHS)
+            if monthLower == MONTHS[j][1 : 3]
+                month = j
+                break
+            end
+        end
+        if typeof(month) == ASCIIString
+            error("str2date: '", month, "' is not a valid month.")
+        end
+    elseif monthLower in MONTHS
+        # Determine the full literal month, if given.
+        month = findfirst(MONTHS, monthLower)
+    else
+        # If no previous condition was caught, throw an error.
+        error("str2date: '", month, "' is not a valid month.")
+    end
+
+    return Date(int(year), int(month), int(day))
 end
 
 function str2date(date::SubString{ASCIIString}, format::ASCIIString)
@@ -741,7 +1136,7 @@ function str2date(date::SubString{ASCIIString}, format::ASCIIString)
     return Date(int(year), int(month), int(day))
 end
 
-function week2date(year::Int64, week::Int64, day::Int64)
+function week2date(year::Int64, week::Int64, day::Int64, walmart::Bool=false)
     #=
     Convert a date in week number format to a Date object. This is an
     implementation of the formula in http://en.wikipedia.org/wiki/
@@ -751,6 +1146,8 @@ function week2date(year::Int64, week::Int64, day::Int64)
       year (Int64): Year of the date.
       week (Int64): Week of the year.
       day (Int64): Day of the week.
+      walmart (Bool, optional): True if the week is a Walmart week, false
+        otherwise.
 
     Returns:
       Date: The converted week version of the date to Date object.
@@ -769,8 +1166,14 @@ function week2date(year::Int64, week::Int64, day::Int64)
         ord = ord - daysInYear
     end
 
+    dateFinal = ord2date(ord, year)
+    if walmart
+        dateFinal = dateFinal + Month(1)
+    end
+
     # Return the converted ordinal to a Date object.
-    return ord2date(ord, year)
+    return dateFinal
 end
+###############################################################################
 
 #end # module Preprocess
