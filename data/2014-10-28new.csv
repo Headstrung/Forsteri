@@ -1,4 +1,4 @@
-basis,aim-store-count,instock-store-count,dc-on-hand,dc-on-order,store-on-hand,target-inventory-level,need-for-til
+basis,aim-store-count,instock-store-count,dc-on-hand,dc-on-order,store-on-hand,target-inventory-level,need-for-target-inventory-level
 276778,401,394,0,90,953,803,62
 276778,391,380,156,96,841,780,52
 276778,449,431,3,276,1143,898,46

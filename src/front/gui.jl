@@ -12,7 +12,7 @@ function startWindow()
     menuBar = createMenuBar()
 
     # Create main window.
-    mainWindow = @Window(menuBar, "Title", 800, 500)
+    mainWindow = @Window(menuBar, "Forsteri", 800, 500)
 
     showall(mainWindow)
 end

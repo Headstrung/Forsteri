@@ -156,7 +156,7 @@ class OpenFrame(wx.Frame):
         lst = []
 
         # Pull accounts from data
-        with open("../../data/" + source + ".csv", newline='') as csvFile:
+        with open(source + ".csv", newline='') as csvFile:
             fileReader = csv.reader(csvFile, delimiter=',', quotechar='|')
             for row in fileReader:
                 lst.append(row)
