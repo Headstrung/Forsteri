@@ -21,21 +21,29 @@ You should have received a copy of the GNU General Public License
 along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+""" Import Declarations """
 import interface as iface
 import wx
 
+""" Frame Class """
 class ManagerFrame(wx.Frame):
     """
     """
+
     def __init__(self, *args, **kwargs):
         """
         """
+
         super(ManagerFrame, self).__init__(*args, **kwargs)
         self.initUI()
 
     def initUI(self):
         """
         """
+
+        # Make a copy of the database file in case the user selects cancel.
+        iface.forgeDB()
+
         # Create the master panel.
         masterPanel = wx.Panel(self)
 
@@ -51,10 +59,8 @@ class ManagerFrame(wx.Frame):
 
         # Create the label and input box.
         label = wx.StaticText(masterPanel, label="Tier Type:")
-        self.combo = wx.ComboBox(masterPanel, choices=choices)
-
-        # Set the combo box to not be editable.
-        self.combo.SetEditable(False)
+        self.combo = wx.ComboBox(masterPanel, choices=choices,
+            style=wx.CB_READONLY)
 
         # Set the initial selection to be the fist item.
         self.combo.SetSelection(0)
@@ -68,7 +74,7 @@ class ManagerFrame(wx.Frame):
         """Initialize the list control."""
         # Create the list control.
         self.itemList = wx.ListCtrl(masterPanel, size=(-1, 200),
-            style=wx.LC_REPORT | wx.BORDER_SUNKEN)
+            style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES|wx.BORDER_SUNKEN)
 
         # Add the title column.
         self.itemList.InsertColumn(0, "Title", width=500)
@@ -81,16 +87,16 @@ class ManagerFrame(wx.Frame):
         manipSizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # Create the buttons.
-        newButton = wx.Button(masterPanel, label="&New")
-        editButton = wx.Button(masterPanel, label="&Edit")
-        deleteButton = wx.Button(masterPanel, label="&Delete")
+        addButton = wx.Button(masterPanel, id=wx.ID_ADD)
+        editButton = wx.Button(masterPanel, id=wx.ID_EDIT)
+        deleteButton = wx.Button(masterPanel, id=wx.ID_DELETE)
 
         # Add the buttons to the manipulate sizer.
-        manipSizer.AddMany([newButton, (5, 0), editButton, (5, 0),
+        manipSizer.AddMany([addButton, (5, 0), editButton, (5, 0),
             deleteButton])
 
         # Bind button presses to functions.
-        newButton.Bind(wx.EVT_BUTTON, self.onNew)
+        addButton.Bind(wx.EVT_BUTTON, self.onAdd)
         editButton.Bind(wx.EVT_BUTTON, self.onEdit)
         deleteButton.Bind(wx.EVT_BUTTON, self.onDelete)
 
@@ -99,8 +105,8 @@ class ManagerFrame(wx.Frame):
         finishSizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # Create the buttons.
-        okButton = wx.Button(masterPanel, label="&OK")
-        cancelButton = wx.Button(masterPanel, label="&Cancel")
+        okButton = wx.Button(masterPanel, id=wx.ID_OK)
+        cancelButton = wx.Button(masterPanel, id=wx.ID_CANCEL)
 
         # Set the OK button to be the dafault button.
         okButton.SetDefault()
@@ -114,7 +120,7 @@ class ManagerFrame(wx.Frame):
 
         """Final frame operations."""
         # Add everything to the master sizer.
-        masterSizer.AddSpacer(10)
+        masterSizer.AddSpacer(5)
         masterSizer.Add(hierSizer, flag=wx.ALIGN_CENTER)
         masterSizer.AddSpacer(10)
         masterSizer.Add(self.itemList, flag=wx.LEFT|wx.RIGHT|wx.EXPAND,
@@ -130,7 +136,7 @@ class ManagerFrame(wx.Frame):
         masterPanel.SetSizer(masterSizer)
 
         # Set window properties.
-        self.SetSize((600, 395))
+        self.SetSize((600, 390))
         self.SetTitle("Hierarchy Manager")
         self.Centre()
         self.Show(True)
@@ -147,7 +153,7 @@ class ManagerFrame(wx.Frame):
         """
 
         # Get the list for the selected tier.
-        items = iface.getList(self.combo.GetStringSelection())
+        items = iface.getTierList(self.combo.GetStringSelection())
 
         # Sort the list.
         items.sort()
@@ -163,7 +169,7 @@ class ManagerFrame(wx.Frame):
 
         return True
 
-    def onNew(self, event):
+    def onAdd(self, event):
         """
         """
 
@@ -185,7 +191,7 @@ class ManagerFrame(wx.Frame):
         dialog.Destroy()
 
         # Add the inputted text to the database.
-        iface.addToList(self.combo.GetStringSelection(), newItem)
+        iface.addToTierList(self.combo.GetStringSelection(), newItem)
 
         # Update the list.
         self.updateList(None)
@@ -202,12 +208,14 @@ class ManagerFrame(wx.Frame):
         # Send an error if nothing is selected.
         if itemIndex == -1:
             errorDialog = wx.MessageDialog(self, "No item was selected.",
-                "Error", wx.OK | wx.ICON_ERROR)
+                "Error", wx.OK|wx.ICON_ERROR)
             errorDialog.ShowModal()
             return False
 
-        # Create the text entry dialog box.
+        # Get the string value of the old item.
         oldItem = self.itemList.GetItemText(itemIndex)
+
+        # Create the text entry dialog box.
         dialog = wx.TextEntryDialog(self, "What is the name of the item?",
             "Edit Item", oldItem)
 
@@ -226,10 +234,10 @@ class ManagerFrame(wx.Frame):
 
         # Remove the altered text from the database.
         tier = self.combo.GetStringSelection()
-        iface.removeFromList(tier, oldItem)
+        iface.removeFromTierList(tier, oldItem)
 
         # Add the inputted text to the database.
-        iface.addToList(tier, newItem)
+        iface.addToTierList(tier, newItem)
 
         # Update the list.
         self.updateList(None)
@@ -253,11 +261,11 @@ class ManagerFrame(wx.Frame):
         # Remove all selected items.
         tier = self.combo.GetStringSelection()
         for i in range(0, self.itemList.GetSelectedItemCount()):
-            # Retrieve the item text.
+            # Get the item text.
             item = self.itemList.GetItemText(itemIndex)
 
             # Remove the selected item.
-            iface.removeFromList(tier, item)
+            iface.removeFromTierList(tier, item)
 
             # Get the next selected item index.
             itemIndex = self.itemList.GetNextSelected(itemIndex)
@@ -271,14 +279,21 @@ class ManagerFrame(wx.Frame):
         """
         """
 
+        # Remove the unaltered version of the database file.
+        iface.removeDB()
+
         self.Close()
 
     def onCancel(self, event):
         """
         """
 
+        # Replace the database file with the unaltered version.
+        iface.replaceDB()
+
         self.Close()
 
+""" Start Application """
 def main():
     """
     """

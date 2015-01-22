@@ -64,7 +64,8 @@ class MainFrame(wx.Frame):
         editMenu = wx.Menu()
         productManager = wx.MenuItem(editMenu, wx.ID_ANY, "&Product Manager...")
         editMenu.Append(productManager)
-        retailManager = wx.MenuItem(editMenu, wx.ID_ANY, "&Retail Manager...")
+        retailManager = wx.MenuItem(editMenu, wx.ID_ANY,
+            "&Hierarchy Manager...")
         editMenu.Append(retailManager)
 
         # Create Help menu and contents.

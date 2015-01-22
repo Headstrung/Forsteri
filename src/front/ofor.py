@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Data Manager Frame
+Open Forecast Frame
 
 Copyright (C) 2014 by Andrew Chalres Hawkins
 
@@ -52,33 +52,34 @@ class ManagerFrame(wx.Frame):
         searchSizer = wx.FlexGridSizer(2, 5, 5, 5)
 
         # Get the label strings and combo box choices.
-        labelStrings = ["Account:", "Class:", "Category:", "Subcategory:",
-            "Product:"]
+        labelStrings = ["Product:", "Account:", "Class:", "Category:",
+            "Subcategory:"]
         choices = self.getChoices()
 
         # Create the labels and input boxes.
         labels = [None] * 5
-        inputs = [None] * 5
+        self.inputs = [None] * 5
         for i in range(0, 5):
             labels[i] = wx.StaticText(masterPanel, label=labelStrings[i])
-            if i < 4:
-                inputs[i] = wx.ComboBox(masterPanel, choices=choices[i])
+            if i == 0:
+                self.inputs[i] = wx.TextCtrl(masterPanel, size=(150, -1))
             else:
-                inputs[i] = wx.TextCtrl(masterPanel, size=(150, -1))
+                self.inputs[i] = wx.ComboBox(masterPanel,
+                    choices=choices[i - 1], style=wx.CB_READONLY|wx.CB_SORT)
 
         # Add the label and combo boxes to the search sizer.
         searchSizer.AddMany(labels)
-        searchSizer.AddMany(inputs)
+        searchSizer.AddMany(self.inputs)
 
         """Initialize the list control."""
-        self.productList = wx.ListCtrl(masterPanel, size=(-1, 200),
-            style=wx.LC_REPORT | wx.BORDER_SUNKEN)
-        self.productList.InsertColumn(0, "Product")
-        self.productList.InsertColumn(1, "Account")
-        self.productList.InsertColumn(2, "Class")
-        self.productList.InsertColumn(3, "Category")
-        self.productList.InsertColumn(4, "Subcategory", width=100)
-        self.updateList()
+        self.productList = wx.ListCtrl(masterPanel, size=(-1, 400),
+            style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES|wx.BORDER_SUNKEN)
+        self.productList.InsertColumn(0, "Product", width=136)
+        self.productList.InsertColumn(1, "Account", width=136)
+        self.productList.InsertColumn(2, "Class", width=136)
+        self.productList.InsertColumn(3, "Category", width=136)
+        self.productList.InsertColumn(4, "Subcategory", width=136)
+        self.updateList(None)
 
         """Initialize the manipulate buttons."""
         # Create the manipulate sizer.
@@ -90,7 +91,8 @@ class ManagerFrame(wx.Frame):
         deleteButton = wx.Button(masterPanel, label="&Delete")
 
         # Add the buttons to the manipulate sizer.
-        manipSizer.AddMany([newButton, editButton, deleteButton])
+        manipSizer.AddMany([newButton, (5, 0), editButton, (5, 0),
+            deleteButton])
 
         # Bind button presses to functions.
         newButton.Bind(wx.EVT_BUTTON, self.onNew)
@@ -105,9 +107,11 @@ class ManagerFrame(wx.Frame):
         okButton = wx.Button(masterPanel, label="&OK")
         cancelButton = wx.Button(masterPanel, label="&Cancel")
 
+        # Set the OK button to be the dafault button.
+        okButton.SetDefault()
+
         # Add the buttons to the finish sizer.
-        finishSizer.Add(okButton)
-        finishSizer.Add(cancelButton)
+        finishSizer.AddMany([okButton, (5, 0), cancelButton, (5, 0)])
 
         # Bind the button presses to function.
         okButton.Bind(wx.EVT_BUTTON, self.onOK)
@@ -115,18 +119,24 @@ class ManagerFrame(wx.Frame):
 
         """Final frame operations."""
         # Add everything to the master sizer.
-        masterSizer.Add(searchSizer, 0, wx.ALIGN_CENTER)
-        masterSizer.Add(self.productList, 0, wx.ALL|wx.EXPAND, 5)
-        masterSizer.Add(manipSizer, 0, wx.ALIGN_CENTER)
-        masterSizer.Add(finishSizer, 0)
+        masterSizer.AddSpacer(10)
+        masterSizer.Add(searchSizer, flag=wx.ALIGN_CENTER)
+        masterSizer.AddSpacer(10)
+        masterSizer.Add(self.productList, flag=wx.LEFT|wx.RIGHT|wx.EXPAND,
+            border=5)
+        masterSizer.AddSpacer(10)
+        masterSizer.Add(manipSizer, flag=wx.ALIGN_CENTER)
+        masterSizer.Add(wx.StaticLine(masterPanel, size=(680, 20)),
+            flag=wx.ALIGN_CENTER)
+        masterSizer.Add(finishSizer, flag=wx.ALIGN_RIGHT)
+        masterSizer.AddSpacer(5)
 
         # Set the sizer for the main panel.
         masterPanel.SetSizer(masterSizer)
 
         # Set window properties.
-        self.SetMinSize((600, 350))
-        self.SetSize((600, 350))
-        self.SetTitle("Data Manager")
+        self.SetSize((700, 595))
+        self.SetTitle("Open Forecast")
         self.Centre()
         self.Show(True)
 
@@ -140,11 +150,17 @@ class ManagerFrame(wx.Frame):
         # Get each list associated with each tier.
         connect = []
         for tier in tiers:
-            connect.append(iface.getList(tier))
+            tierList = iface.getTierList(tier)
+
+            # Add an empty string for selection.
+            tierList.append("")
+
+            # Append the entire list to the returned list.
+            connect.append(tierList)
 
         return connect
 
-    def updateList(self):
+    def updateList(self, event):
         """
         """
 
@@ -172,7 +188,7 @@ class ManagerFrame(wx.Frame):
         """
         """
 
-        print("Finished")
+        self.Close()
 
     def onCancel(self, event):
         """
@@ -186,7 +202,7 @@ def main():
     """
 
     app = wx.App()
-    ManagerFrame(None)
+    ManagerFrame(None)#, style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
     app.MainLoop()
 
 if __name__ == '__main__':
