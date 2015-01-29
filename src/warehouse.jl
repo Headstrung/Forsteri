@@ -23,8 +23,9 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 using HDF5
 
 #= Constant Declarations =#
-const DATABASE = "../data/database.h5"
-const REFERENCE = "../data/reference.h5"
+const DATA = "../data/"
+const DATABASE = str(DATA, "database.h5")
+const REFERENCE = str(DATA, "reference.h5")
 
 #= Outward Functions #=
 

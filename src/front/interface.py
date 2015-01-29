@@ -23,18 +23,22 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 
 """ Import Declarations """
 import h5py
+import numpy as np
 import subprocess as sp
 
 """ Constant Declarations """
-REFERENCE = "../../data/reference.h5"
+DATA = "../../data/"
+REFERENCE = DATA + "reference.h5"
+DATA_TYPE = h5py.special_dtype(vlen=bytes)
 
 """ Main Functions """
+""" Manipulate Internal Tiers """
 def getTiers():
     """
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r")
+    fid = h5py.File(REFERENCE, mode="r")
 
     # Extract the tiers.
     tiers = []
@@ -51,7 +55,7 @@ def addTier(tier):
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r+")
+    fid = h5py.File(REFERENCE, mode="r+")
 
     # Check if the tier already exists.
     if fid["internal"].__contains__(tier):
@@ -70,7 +74,7 @@ def removeTier(tier):
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r+")
+    fid = h5py.File(REFERENCE, mode="r+")
 
     # Check if the tier already exists.
     if not fid["internal"].__contains__(tier):
@@ -84,12 +88,13 @@ def removeTier(tier):
 
     return True
 
+""" Manipulate Internal Tier Lists """
 def getTierList(tier, decode=True):
     """
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r")
+    fid = h5py.File(REFERENCE, mode="r")
 
     # Check if values have been defined yet.
     if fid["internal"][tier].shape == ():
@@ -114,7 +119,7 @@ def addToTierList(tier, item):
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r+")
+    fid = h5py.File(REFERENCE, mode="r+")
 
     # Encode the input item.
     item = item.encode()
@@ -133,7 +138,7 @@ def addToTierList(tier, item):
     del fid["internal"][tier]
 
     # Add the new list.
-    fid["internal"].create_dataset(tier, dtype="S100", data=items)
+    fid["internal"].create_dataset(tier, dtype=DATA_TYPE, data=items)
 
     # Close the reference file.
     fid.close()
@@ -145,7 +150,7 @@ def removeFromTierList(tier, item):
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r+")
+    fid = h5py.File(REFERENCE, mode="r+")
 
     # Encode the input item.
     item = item.encode()
@@ -167,19 +172,204 @@ def removeFromTierList(tier, item):
     if len(items) == 0:
         fid["internal"].create_dataset(tier, ())
     else:
-        fid["internal"].create_dataset(tier, dtype="S100", data=items)
+        fid["internal"].create_dataset(tier, dtype=DATA_TYPE, data=items)
 
     # Close the reference file.
     fid.close()
 
     return True
 
+""" Manipulate External Variables """
+def getVariables():
+    """
+    """
+
+    # Open the reference file.
+    fid = h5py.File(REFERENCE, mode="r")
+
+    # Extract the tiers.
+    variables = [variable for variable in fid["external"]]
+
+    # Close the reference file.
+    fid.close()
+
+    return variables
+
+def addVariable(variable):
+    """
+    """
+
+    # Open the reference file.
+    fid = h5py.File(REFERENCE, mode="r+")
+
+    # Check if the variable already exists.
+    if fid["external"].__contains__(variable):
+        return False
+
+    # Add the tier to the group.
+    fid["external"].create_dataset(variable, ())
+
+    # Close the reference file.
+    fid.close()
+
+    return True
+
+def removeVariable(variable):
+    """
+    """
+
+    # Open the reference file.
+    fid = h5py.File(REFERENCE, mode="r+")
+
+    # Check if the variable already exists.
+    if not fid["external"].__contains__(variable):
+        return False
+
+    # Add the tier to the group.
+    del fid["external"][variable]
+
+    # Close the reference file.
+    fid.close()
+
+    return True
+
+
+""" Manipulate External Variable Lists """
+def getVariableList(variable, decode=True):
+    """
+    """
+
+    # Open the reference file.
+    fid = h5py.File(REFERENCE, mode="r")
+
+    # Check if values have been defined yet.
+    if fid["external"][variable].shape == ():
+        return []
+
+    # Extract the items in the given variable.
+    if decode:
+        items = [item.decode() for item in fid["external"][variable]]
+    else:
+        items = [item for item in fid["external"][variable]]
+
+    # Close the reference file.
+    fid.close()
+
+    return items
+
+def getVariableHash():
+    """
+    """
+
+    # Open the reference file.
+    fid = h5py.File(REFERENCE, mode="r")
+
+    # Get the external group.
+    external = fid["external"]
+
+    # Iterate over the external group and match possible inputs with known
+    # variables.
+    match = dict()
+    for value in external:
+        if external[value].shape != () or value != "Missing":
+            for key in external[value]:
+                match[key.decode()] = value
+
+    # Close the reference file.
+    fid.close()
+
+    return match
+
+def getDateFormats():
+    """
+    """
+
+    # Open the reference file.
+    fid = h5py.File(REFERENCE, mode="r")
+
+    dates = []
+    for entry in fid["external"]["Date"]:
+        entry = entry.decode()
+        if entry[0] == '$':
+            dates.append(entry[1:])
+
+    # Close the reference file.
+    fid.close()
+
+    return dates
+
+def addToVariableList(variable, item):
+    """
+    """
+
+    # Open the reference file.
+    fid = h5py.File(REFERENCE, mode="r+")
+
+    # Encode the input item.
+    item = item.lower().encode()
+
+    # Get the current list of items.
+    items = getVariableList(variable, False)
+
+    # Check if the item has already been added.
+    if item in items:
+        return False
+
+    # Add the new item to the list.
+    items.append(item)
+
+    # Remove the old list.
+    del fid["external"][variable]
+
+    # Add the new list.
+    fid["external"].create_dataset(variable, dtype=DATA_TYPE, data=items)
+
+    # Close the reference file.
+    fid.close()
+
+    return True
+
+def removeFromVariableList(variable, item):
+    """
+    """
+
+    # Open the reference file.
+    fid = h5py.File(REFERENCE, mode="r+")
+
+    # Encode the input item.
+    item = item.encode()
+
+    # Get the current list of items.
+    items = getVariableList(variable, False)
+
+    # Check if the item is in the variable.
+    if item not in items:
+        return False
+
+    # Remove the item from the list.
+    items.remove(item)
+
+    # Remove the old list.
+    del fid["external"][variable]
+
+    # Add the new list.
+    if len(items) == 0:
+        fid["external"].create_dataset(variable, ())
+    else:
+        fid["external"].create_dataset(variable, dtype=DATA_TYPE, data=items)
+
+    # Close the reference file.
+    fid.close()
+
+    return True
+
+""" Manipulate Product Data """
 def getMatch(element, decode=True):
     """
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r")
+    fid = h5py.File(REFERENCE, mode="r")
 
     # The groups will always be lower case, so convert.
     element = element.lower()
@@ -207,7 +397,7 @@ def getProduct(product):
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r")
+    fid = h5py.File(REFERENCE, mode="r")
 
     # Encode the product string.
     product = product.encode()
@@ -246,7 +436,7 @@ def addProduct(product, sku="", account="", className="", category="",
     args = locals()
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r+")
+    fid = h5py.File(REFERENCE, mode="r+")
 
     # Iterate through the product characteristics.
     for element in fid["match"].keys():
@@ -263,7 +453,7 @@ def addProduct(product, sku="", account="", className="", category="",
         del fid["match"][element]
 
         # Add the new list.
-        fid["match"].create_dataset(element, dtype="S100", data=data)
+        fid["match"].create_dataset(element, dtype=DATA_TYPE, data=data)
 
     # Close the reference file.
     fid.close()
@@ -275,7 +465,7 @@ def removeProduct(product):
     """
 
     # Open the reference file.
-    fid = h5py.File(REFERENCE, "r+")
+    fid = h5py.File(REFERENCE, mode="r+")
 
     # Get the list of products.
     products = getMatch("product", decode=False)
@@ -300,7 +490,7 @@ def removeProduct(product):
     if len(products) == 0:
         fid["match"].create_dataset("product", ())
     else:
-        fid["match"].create_dataset("product", dtype="S100", data=products)
+        fid["match"].create_dataset("product", dtype=DATA_TYPE, data=products)
 
     # Iterate through the product characteristics.
     for element in fid["match"].keys():
@@ -319,7 +509,8 @@ def removeProduct(product):
             if len(data) == 0:
                 fid["match"].create_dataset(element, ())
             else:
-                fid["match"].create_dataset(element, dtype="S100", data=data)
+                fid["match"].create_dataset(element, dtype=DATA_TYPE,
+                    data=data)
 
     # Close the reference file.
     fid.close()
@@ -332,12 +523,25 @@ def setAttribute(product, element, value):
 
     pass
 
+""" Database Management """
+def repackDB():
+    """
+    """
+
+    # Repack the database.
+    sp.call(["h5repack", REFERENCE, DATA + "temp.h5"])
+
+    # Replace the old database with the new, repacked one.
+    replaceDB()
+
+    return True
+
 def forgeDB():
     """
     """
 
     # Copy of the database file.
-    sp.call(["cp", REFERENCE, REFERENCE[: -12] + "temp.h5"])
+    sp.call(["cp", REFERENCE, DATA + "temp.h5"])
 
     return True
 
@@ -347,7 +551,7 @@ def replaceDB():
     """
 
     # Replace the current database with the inputted one.
-    sp.call(["mv", REFERENCE[: -12] + "temp.h5", REFERENCE])
+    sp.call(["mv", DATA + "temp.h5", REFERENCE])
 
     return True
 
@@ -356,7 +560,7 @@ def removeDB():
     """
 
     # Remove the copied database file.
-    sp.call(["rm", REFERENCE[: -12] + "temp.h5"])
+    sp.call(["rm", DATA + "temp.h5"])
 
     return True
 
