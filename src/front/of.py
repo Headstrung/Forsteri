@@ -24,14 +24,17 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """ Import Declarations """
 import csv
 import interface as iface
+import os.path
 import wx
 
 """ Frame Class """
 class ManagerFrame(wx.Frame):
     """
     To Do:
-      1) Add a mass add function through a button/menu or something.
-      2) Bind the closing by X to the onClose function without breaking.
+      1) Convert the data population pull to be from the database instead of
+        the HDF5 file.
+      2) The selection of a filter is very slow, need to speed that up. (This
+        might not be slow after 1) is complete).
 
     To Do Far:
       1) Add ways to search for products. Being by chemical or component.
@@ -42,12 +45,8 @@ class ManagerFrame(wx.Frame):
         """
         """
 
+        # Initialize by the parent's constructor.
         super(ManagerFrame, self).__init__(*args, **kwargs)
-        self.initUI()
-
-    def initUI(self):
-        """
-        """
 
         # Make a copy of the database file in case the user selects cancel.
         iface.forgeDB()
@@ -97,7 +96,7 @@ class ManagerFrame(wx.Frame):
         # sizer, and bind them to functions.
         for i in range(0, 4):
             labels[i] = wx.StaticText(masterPanel, label=self.labelStrings[i])
-            self.inputs[i + 1] = wx.ComboBox(masterPanel,
+            self.inputs[i + 1] = wx.ComboBox(masterPanel, size=(150, -1),
                 choices=choices[i], style=wx.CB_READONLY|wx.CB_SORT)
             searchSizer.AddMany([(0, 10), labels[i], (0, 5),
                 self.inputs[i + 1]])
@@ -201,6 +200,9 @@ class ManagerFrame(wx.Frame):
 
         # Set the sizer for the main panel.
         masterPanel.SetSizer(masterSizer)
+
+        # Bind closing the frame to a function.
+        self.Bind(wx.EVT_CLOSE, self.onClose)
 
         # Set window properties.
         self.SetSize((875, 532))
@@ -311,16 +313,6 @@ class ManagerFrame(wx.Frame):
 
         return True
 
-    def selectAll(self, event):
-        """
-        """
-
-        # Iterate through the items in the list selecting each.
-        for i in range(0, self.productList.GetItemCount()):
-            self.productList.Select(i)
-
-        return True
-
     def readAddData(self, path):
         """
         """
@@ -361,7 +353,13 @@ class ManagerFrame(wx.Frame):
             self.editButton.SetBackgroundColour(wx.NullColour)
             self.deleteButton.SetBackgroundColour(wx.NullColour)
 
-        return True
+    def selectAll(self, event):
+        """
+        """
+
+        # Iterate through the items in the list selecting each.
+        for i in range(0, self.productList.GetItemCount()):
+            self.productList.Select(i)
 
     def onMouseOverAdd(self, event):
         """
@@ -372,8 +370,6 @@ class ManagerFrame(wx.Frame):
 
         # Continue processing events.
         event.Skip()
-
-        return True
 
     def onMouseOffAdd(self, event):
         """
@@ -388,16 +384,12 @@ class ManagerFrame(wx.Frame):
         # Continue processing events.
         event.Skip()
 
-        return True
-
     def onTimer(self, event):
         """
         """
 
         # Change the color of the add button.
         self.addButton.SetBackgroundColour("Yellow")
-
-        return True
 
     def onAdd(self, event):
         """
@@ -417,7 +409,7 @@ class ManagerFrame(wx.Frame):
             return False
 
         # Create the custom text entry dialog box.
-        addDialog = InputDialog(self, title="Add Product", size=(300, 275))
+        addDialog = InputDialog(self, title="Add Product")
 
         # If OK is not pressed, return false.
         if addDialog.ShowModal() != wx.ID_OK:
@@ -443,8 +435,6 @@ class ManagerFrame(wx.Frame):
 
         # Update the list.
         self.updateList(None)
-
-        return True
 
     def onAddMulti(self, overwrite=False):
         """
@@ -547,8 +537,6 @@ class ManagerFrame(wx.Frame):
         # Update the list.
         self.updateList(None)
 
-        return True
-
     def onEdit(self, event):
         """
         """
@@ -579,7 +567,7 @@ class ManagerFrame(wx.Frame):
         oldProductData = iface.getProduct(product)
 
         # Create the custom text entry dialog box.
-        editDialog = InputDialog(self, title="Edit Product", size=(300, 275))
+        editDialog = InputDialog(self, title="Edit Product")
 
         # Set the initial text to be the old product.
         editDialog.setTextEntry(oldProductData)
@@ -612,8 +600,6 @@ class ManagerFrame(wx.Frame):
         # Update the list.
         self.updateList(None)
 
-        return True
-
     def onEditMulti(self, count=-1):
         """
         """
@@ -628,7 +614,7 @@ class ManagerFrame(wx.Frame):
         oldProductData = iface.getProduct(product)
 
         # Create the custom text entry dialog box.
-        editDialog = InputDialog(self, title="Edit Products", size=(300, 275))
+        editDialog = InputDialog(self, title="Edit Products")
 
         # Change the edit dialog for multiple edits.
         editDialog.setMultiEdit()
@@ -704,8 +690,6 @@ class ManagerFrame(wx.Frame):
         # Update the list.
         self.updateList(None)
 
-        return True
-
     def onDelete(self, event):
         """
         """
@@ -776,8 +760,6 @@ class ManagerFrame(wx.Frame):
         # Update the list.
         self.updateList(None)
 
-        return True
-
     def onReport(self, event):
         """
         """
@@ -791,8 +773,6 @@ class ManagerFrame(wx.Frame):
         # Close the frame.
         self.Close()
 
-        return True
-
     def onOK(self, event):
         """
         """
@@ -802,8 +782,6 @@ class ManagerFrame(wx.Frame):
 
         # Close the frame.
         self.Close()
-
-        return True
 
     def onCancel(self, event):
         """
@@ -815,24 +793,28 @@ class ManagerFrame(wx.Frame):
         # Close the frame.
         self.Close()
 
-        return True
+    def onClose(self, event):
+        """
+        """
 
+        # Replace the database file with the unaltered version, if it exists.
+        if os.path.isfile("../../data/temp.h5"):
+            iface.replaceDB()
+
+        # Destroy the window.
+        self.Destroy()
+
+""" Input Dialog Box Class """
 class InputDialog(wx.Dialog):
     """
-    To Do:
-      1) Change the hierarchy inputs to combo boxes instead of text controls.
     """
 
     def __init__(self, *args, **kwargs):
         """
         """
 
-        super(InputDialog, self).__init__(*args, **kwargs)
-        self.initUI()
-
-    def initUI(self):
-        """
-        """
+        # Initialize by the parent's constructor.
+        super().__init__(*args, **kwargs)
 
         # Create the master panel.
         masterPanel = wx.Panel(self)
@@ -843,12 +825,21 @@ class InputDialog(wx.Dialog):
         # Create the content sizer.
         contentSizer = wx.FlexGridSizer(6, 2, 5, 10)
 
-        # Create the text control inputs.
+        # Get the choices for the combo boxes.
+        choices = self.getChoices()
+
+        # Create the text control and combo box inputs.
         labels = ["Product", "Sku", "Account", "Class", "Category",
             "Subcategory"]
         self.textInputs = []
         for i in range(0, 6):
-            self.textInputs.append(wx.TextCtrl(masterPanel, size=(150, -1)))
+            if i < 2:
+                self.textInputs.append(wx.TextCtrl(masterPanel,
+                    size=(150, -1)))
+            else:
+                self.textInputs.append(wx.ComboBox(masterPanel,
+                    size=(150, -1), choices=choices[i - 2],
+                    style=wx.CB_READONLY|wx.CB_SORT))
 
             # Add the labels and text control inputs to the content sizer.
             contentSizer.AddMany([wx.StaticText(masterPanel, label=labels[i]),
@@ -881,6 +872,33 @@ class InputDialog(wx.Dialog):
 
         # Set the master sizer.
         masterPanel.SetSizer(masterSizer)
+
+        # Set the size of the window.
+        self.SetSize((300, 283))
+
+    """ Helper Functions """
+    def getChoices(self):
+        """
+        """
+
+        # Get the list of tiers.
+        tiers = iface.getTiers()
+
+        # Get each list associated with each tier.
+        connect = []
+        for tier in tiers:
+            tierList = iface.getTierList(tier)
+
+            # Add an empty string for selection.
+            tierList.append("")
+
+            # Append the entire list to the returned list.
+            connect.append(tierList)
+
+        # Switch the indices of category and class.
+        connect[1], connect[2] = connect[2], connect[1]
+
+        return connect
 
     def getTextEntry(self):
         """
@@ -926,6 +944,7 @@ class InputDialog(wx.Dialog):
 
         return True
 
+    """ Event Handler Function """
     def onOK(self, event):
         """
         """

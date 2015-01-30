@@ -22,7 +22,7 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 """ Import Declarations """
-import interface as iface
+import interfacesql as iface
 import os.path
 import wx
 
@@ -123,6 +123,7 @@ class ManagerPanel(wx.Panel):
         # Set the sizer for the master panel.
         self.SetSizer(masterSizer)
 
+    """ Helper Functions """
     def getChoices(self):
         """
         """
@@ -161,6 +162,7 @@ class ManagerPanel(wx.Panel):
 
         return True
 
+    """ Event Handler Functions """
     def selectAll(self, event):
         """
         """
@@ -168,8 +170,6 @@ class ManagerPanel(wx.Panel):
         # Iterate through the items in the list selecting each.
         for i in range(0, self.itemList.GetItemCount()):
             self.itemList.Select(i)
-
-        return True
 
     def onSelected(self, event):
         """
@@ -185,8 +185,6 @@ class ManagerPanel(wx.Panel):
         else:
             self.editButton.Enable()
             self.deleteButton.SetBackgroundColour(wx.NullColour)
-
-        return True
 
     def onAdd(self, event):
         """
@@ -347,11 +345,12 @@ class ManagerNotebook(wx.Notebook):
         variable = ManagerPanel(self, id=ID_VARIABLE)
 
         # Add the manager page to the notebook.
-        self.AddPage(variable, "Variable")
+        self.AddPage(variable, "Input Variable")
 
         # Bind tab seletion to functions.
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onPageChange)
 
+    """ Event Handler Functions """
     def onPageChange(self, event):
         """
         """
@@ -421,6 +420,7 @@ class ManagerFrame(wx.Frame):
         self.Centre()
         self.Show(True)
 
+    """ Event Handler Functions """
     def onOK(self, event):
         """
         """
