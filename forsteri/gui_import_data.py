@@ -29,14 +29,13 @@ import int_data as idata
 import int_hdf5 as ihdf5
 import int_sql as isql
 import pro_decompose as dec
-import sqlite3
 import threading as td
 import wx
 
 """
 Constant Declarations
 """
-DATA_DIR = "/home/andrew/Dropbox/product-quest/Forsteri/data/"
+
 
 """
 Frame Class
@@ -155,7 +154,7 @@ class ImportFrame(wx.Frame):
         self.filePicker = wx.FilePickerCtrl(masterPanel, path='',
             wildcard="CSV files (*.csv)|*.csv|TXT files (*txt)|*.txt",
             size=(250, -1), style=wx.FLP_FILE_MUST_EXIST)
-        self.filePicker.SetInitialDirectory(DATA_DIR)
+        self.filePicker.SetInitialDirectory(idata.DATA)
 
         # Add the text and file picker to the file picker sizer.
         filePickerSizer.Add(filePickerText, flag=wx.ALIGN_CENTER)
@@ -236,6 +235,15 @@ class ImportFrame(wx.Frame):
     """
     def displayChange(self, source, dateFormat):
         """
+        Show the old headers, what they were changed to, and why in the list
+        control.
+
+        Args:
+          source (str): The location of the file on the disk.
+          dateFormat (str): The format of the date(s).
+
+        Returns:
+          bool: True if successful, false otherwise.
         """
 
         # Decompose the file and extract the old and new headers.
@@ -326,6 +334,15 @@ class ImportFrame(wx.Frame):
         # Get the file locations on the disk.
         source = self.filePicker.GetPath()
 
+        # If no source has been selected, show an error message and return.
+        if source == '':
+            errorDialog = wx.MessageDialog(self,
+                "No input file was selected. Please select a file.", "Error",
+                wx.OK|wx.ICON_ERROR)
+            errorDialog.ShowModal()
+
+            return
+
         # Check to make sure there is a date for the file.
         if self.timeseriesRB.GetValue():
             # Get the value selected for date format from the combo box.
@@ -402,8 +419,6 @@ class ImportFrame(wx.Frame):
                 importThread.start()
 
                 self.Close()
-
-        # Add missing values to the HDF5 file.
 
     """
     Helper Functions
@@ -494,11 +509,11 @@ class VariableDialog(wx.Dialog):
         """
 
         # Get the list of variables.
-        variables = idata.getVariables()
+        variables = ihdf5.getVariables()
 
         # Convert each variable to be aestetically pleasing.
-        variables = [variable.replace('_', ' ').title() for variable in\
-            variables]
+        #variables = [variable.replace('_', ' ').title() for variable in\
+        #    variables]
 
         return variables
 

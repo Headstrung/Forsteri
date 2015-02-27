@@ -59,10 +59,10 @@ def getAttribute(attribute, connection=None):
     cursor = connection.cursor()
 
     # Execute the statement to retrieve all items under attribute.
-    products = []
-    for row in cursor.execute("""SELECT ({a}) FROM information;""".\
-        format(a=attribute)):
-        products.append(row[0])
+    cursor.execute("""SELECT {a} FROM information;""".format(a=attribute))
+
+    # Fetch all rows.
+    products = cursor.fetchall()
 
     # Close the cursor.
     cursor.close()
@@ -148,9 +148,9 @@ def getData(sieve, connection=None):
                 sieveStr = ''.join([sieveStr, " AND ", key, "='", value, "'"])
 
 
-    # If the string is length zero no data was input.
+    # If the string is length zero, no sieve was input.
     if len(sieveStr) == 0:
-        # Execute the statement to retriece all data.
+        # Execute the statement to retrieve all data.
         cursor.execute("""SELECT product, sku, account, class, category, 
 subcategory FROM information;""")
     else:
@@ -165,10 +165,10 @@ subcategory FROM information WHERE {s};""".format(s=sieveStr))
     productData = cursor.fetchall()
 
     # Convert all None values to be empty strings.
-    productData = ['' if attribute is None else attribute for product in\
-        productData for attribute in product]
-    productData = [productData[z : z + 6] for z in range(0,
-        len(productData), 6)]
+    productData = ['' if attr is None else attr for product in productData for\
+        attr in product]
+    productData = [productData[z : z + 6] for z in range(0, len(productData),
+        6)]
 
     # Close the cursor.
     cursor.close()
@@ -240,8 +240,7 @@ def addProduct(productData, connection=None):
         flag = True
 
     # Check if the product has been input or if it has already been added.
-    if "product" not in productData.keys() or productData["product"] in\
-        getAttribute("product", connection):
+    if "product" not in productData.keys():
         return False
 
     # Initlialize the attribute and value lists.
@@ -268,8 +267,11 @@ def addProduct(productData, connection=None):
     cursor = connection.cursor()
 
     # Execute the command to write the new data to the database.
-    cursor.execute("""INSERT INTO information {a} VALUES {v}""".\
-        format(a=attrs, v=values))
+    try:
+        cursor.execute("""INSERT INTO information {a} VALUES {v}""".\
+            format(a=attrs, v=values))
+    except IntegrityError:
+        print(productData["product"] + " already exists in the database.")
 
     # Close the cursor.
     cursor.close()
@@ -541,15 +543,9 @@ def removeProduct(product, connection=None):
     return True
 
 """
-Import Files
+Missing Products
 """
-def addFile():
-    """
-    """
-
-    pass
-
-def fgThisMonth(connection=None):
+def addMissing(basis, connection=None):
     """
     """
 
@@ -562,12 +558,180 @@ def fgThisMonth(connection=None):
     # Create a cursor from the connection.
     cursor = connection.cursor()
 
-    # Execute the statement to get all dates of finished goods imports.
-    cursor.execute("""SELECT date_of_file FROM import WHERE variable=
-'finished_goods'""")
+    # Execute the command to add a missing product.
+    cursor.execute("""INSERT OR IGNORE INTO missing (basis) VALUES ('{b}')""".\
+        format(b=basis))
 
-    # Fetch all dates.
-    dates = cursor.fetchall()
+    # Execute teh command to get the id of the input basis.
+    cursor.execute("""SELECT id FROM missing WHERE basis='{b}'""".\
+        format(b=basis))
+
+    # Fetch the returned id.
+    basisID = cursor.fetchone()[0]
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return basisID
+
+"""
+Import Information
+"""
+def addImport(fileInfo, connection=None):
+    """
+    """
+
+    # Put the inputs into the correct string form.
+    columns = str(tuple(fileInfo.keys())).replace("'", '')
+    values = str(tuple(fileInfo.values()))
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to add the import information.
+    cursor.execute("""INSERT INTO import {c} VALUES {v}""".format(c=columns,
+        v=values))
+
+    # Execute the statement to get the id of the input.
+    cursor.execute("""SELECT id FROM import WHERE date_of_import='{doi}'""".\
+        format(doi=fileInfo["date_of_import"]))
+
+    # Fetch the returned id.
+    importID = cursor.fetchone()[0]
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return importID
+
+"""
+Link Products
+"""
+def addLink(old, new, connection=None):
+    """
+    """
+
+    # Create the string form for the values.
+    values = str((old, new))
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to add the link.
+    cursor.execute("""INSERT OR REPLACE INTO link (old, new) VALUES {v}""".\
+        format(v=values))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def setLink(old, new, kind, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to add the link.
+    if kind == 1:
+        cursor.execute("""UPDATE link SET old='{o}' WHERE new='{n}'""".\
+            format(o=old, n=new))
+    elif kind == 2:
+        cursor.execute("""UPDATE link SET new='{n}' WHERE old='{o}'""".\
+            format(o=old, n=new))
+    else:
+        cursor.execute("""UPDATE link SET old='{o}', new='{n}' WHERE
+old='{o2}'""".format(o=old, n=new, o2=kind))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def removeLink(old, new, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to delete the input link.
+    cursor.execute("""DELETE FROM link WHERE old='{o}' AND new='{n}'""".\
+        format(o=old, n=new))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def getLinks(connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to add the link.
+    cursor.execute("""SELECT old, new FROM link ORDER BY old""")
+
+    # Fetch all of the returned data.
+    links = cursor.fetchall()
 
     # Close the cursor.
     cursor.close()
@@ -576,21 +740,54 @@ def fgThisMonth(connection=None):
     if flag:
         connection.close()
 
-    # Find the current day.
-    currentDate = dt.date(1, 1, 1).today()
+    return links
 
-    # Iterate over the dates extracted.
-    for date in dates:
-        # Convert to a datetime date.
-        dtDate = text2date(date)
+def getLinksTo(product, connection=None):
+    """
+    Assumes links are one to one.
+    """
 
-        # Check if the converted month and year are equivolent to the current
-        # month and year. If so, return true.
-        if dtDate.month == currentDate.month and dtDate.year ==\
-            currentDate.year:
-            return True
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
 
-    return False
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Initialize links.
+    links = []
+
+    # Execute the command to 
+    cursor.execute("""SELECT old FROM link WHERE new='{n}'""".\
+        format(n=product))
+
+    # Fetch all of the returned data.
+    prelink = [x[0] for x in cursor.fetchall()]
+
+    # Iterate until no values are returned.
+    while len(prelink) != 0:
+        print(prelink)
+        if len(prelink) == 1:
+            links.append(prelink[0])
+            cursor.execute("""SELECT old FROM link WHERE new='{n}'""".\
+                format(n=product))
+            prelink = [x[0] for x in cursor.fetchall()]
+        else:
+            for link in prelink:
+                t = getLinksTo(link, connection)
+                links.extend(t)
+            break
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.close()
+
+    return links
 
 """
 Helper Functions

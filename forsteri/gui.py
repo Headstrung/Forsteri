@@ -27,7 +27,9 @@ Import Declarations
 import csv
 import gui_data_manager as dm
 import gui_import_data as imd
+import gui_link_products as lp
 import gui_open_product as omp
+import gui_product as pr
 import int_hdf5 as ihdf5
 import subprocess as sp
 import webbrowser as wb
@@ -36,11 +38,39 @@ import wx.html
 import wx.adv
 
 """
+Constant Declarations
+"""
+TITLE = "Forsteri"
+
+"""
 Frame Class
 """
 class MainFrame(wx.Frame):
+    """
+    A frame that contains the menu and status bars as well as opened product's
+    information. This frame is created on start up and is the main frame for
+    the application. All subsequent interaction with the application with be
+    through this frame.
+
+    Extends:
+      wx.Frame
+    """
+
     def __init__(self, *args, **kwargs):
         """
+        Initialize the frame.
+
+        Args:
+          *args (tuple of object): Any arguments to be passed directly to the
+            super's constructor.
+          **kwargs (dictionary of name: object): Any keyword arguments to be
+            passed to the super's constructor.
+
+        Returns:
+          MainFrame
+
+        To Do:
+
         """
 
         ## Frame
@@ -48,50 +78,7 @@ class MainFrame(wx.Frame):
         super().__init__(*args, **kwargs)
 
         # Create the master panel.
-        masterPanel = wx.Panel(self)
-
-        # Create the master sizer.
-        masterSizer = wx.GridBagSizer(5, 5)
-
-        # Get the data for the default product (this will be a get method).
-        title = "ACT-ABCDE-00"
-        account = "Account"
-        tier = "Class - Category - Subcategory"
-        desc = """The red fox jumped over the moon with a spoon and landed
- on his broom."""
-        forecast = [100, 200, 800, 1200, 700, 900, 1400, 2500, 100, 200,
-            300, 200]
-        previous1 = [100, 200, 800, 1200, 700, 900, 1400, 2500, 100, 200,
-            300, 200]
-        previous2 = [100, 200, 800, 1200, 700, 900, 1400, 2500, 100, 200,
-            300, 200]
-
-        ## Title
-        # Create the title sizer.
-        titleSizer = wx.BoxSizer(wx.VERTICAL)
-
-        # Create font styles.
-        titleFont = wx.Font(30, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL,
-            wx.FONTWEIGHT_BOLD)
-        subFont = wx.Font(14, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL,
-            wx.FONTWEIGHT_NORMAL)
-
-        # Create the static text.
-        self.titleText = wx.StaticText(masterPanel, label=title)
-        self.titleText.SetFont(titleFont)
-        self.accountText = wx.StaticText(masterPanel, label=account)
-        self.accountText.SetFont(subFont)
-        self.tierText = wx.StaticText(masterPanel, label=tier)
-        self.tierText.SetFont(subFont)
-
-        # Add the static text to the sizer.
-        titleSizer.Add(self.titleText)
-        titleSizer.Add(self.accountText)
-        titleSizer.Add(self.tierText)
-
-        ## Menu Bar
-        # Create the menu bar.
-        menuBar = self.createMenuBar()
+        self.masterPanel = pr.ProductPanel(self)
 
         ## Status Bar
         # Create and initlialize the status bar.
@@ -100,20 +87,11 @@ class MainFrame(wx.Frame):
 
         ## Frame Operations
         # Set the menu bar
-        self.SetMenuBar(menuBar)
-
-        # Add everything to the master sizer.
-        masterSizer.Add(titleSizer, pos=(0,0), span=(3, 5),
-            flag=wx.ALIGN_CENTER|wx.EXPAND)
-
-        #masterSizer.AddGrowableCol(0)
-
-        # Set the sizer for the master panel.
-        masterPanel.SetSizer(masterSizer)
+        self.SetMenuBar(self.createMenuBar())
 
         # Set window properties.
         self.SetSize((1000, 625))
-        self.SetTitle("Forsteri")
+        self.SetTitle(TITLE)
         self.Centre()
         self.Show(True)
 
@@ -122,6 +100,13 @@ class MainFrame(wx.Frame):
     """
     def createMenuBar(self):
         """
+        Create the manu bar.
+
+        Args:
+          None
+
+        Returns:
+          wx.MenuBar
         """
 
         ## File
@@ -136,12 +121,12 @@ class MainFrame(wx.Frame):
         quit = wx.MenuItem(fileMenu, wx.ID_EXIT)
 
         # Create the Utilitites sub menu items.
-        linkProds = wx.MenuItem(utilities, wx.ID_CONVERT, "&Link Products")
+        linkProducts = wx.MenuItem(utilities, wx.ID_CONVERT, "&Link Products")
         syncDB = wx.MenuItem(utilities, wx.ID_UP, "&Sync Database")
         shrinkHDF = wx.MenuItem(utilities, wx.ID_ZOOM_OUT, "&Shrink HDF5 File")
 
         # Add items to the Utilities sub menu.
-        utilities.Append(linkProds)
+        utilities.Append(linkProducts)
         utilities.AppendSeparator()
         utilities.Append(syncDB)
         utilities.Append(shrinkHDF)
@@ -195,11 +180,15 @@ class MainFrame(wx.Frame):
         # Bind selections to functions.
         self.Bind(wx.EVT_MENU, self.onOpen, openProducts)
         self.Bind(wx.EVT_MENU, self.onImport, importData)
-        self.Bind(wx.EVT_MENU, self.onShrinkHDF, shrinkHDF)
+        self.Bind(wx.EVT_MENU, self.onLink, linkProducts)
+        self.Bind(wx.EVT_MENU, self.onSync, syncDB)
+        self.Bind(wx.EVT_MENU, self.onShrink, shrinkHDF)
+        self.Bind(wx.EVT_MENU, self.onQuit, quit)
         self.Bind(wx.EVT_MENU, self.onDataManager, dataManager)
+        self.Bind(wx.EVT_MENU, self.onConn, connections)
+        self.Bind(wx.EVT_MENU, self.onPref, preferences)
         self.Bind(wx.EVT_MENU, self.onDoc, documentation)
         self.Bind(wx.EVT_MENU, self.onHelp, titleHelp)
-        self.Bind(wx.EVT_MENU, self.onQuit, quit)
         self.Bind(wx.EVT_MENU, self.onAbout, about)
 
         # Return menu bar.
@@ -210,6 +199,14 @@ class MainFrame(wx.Frame):
     """
     def onOpen(self, event):
         """
+        What to do when the open menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the open menu
+            item is selected.
+
+        Returns:
+          None
         """
 
         # Create the open/manage products dialog.
@@ -228,7 +225,8 @@ class MainFrame(wx.Frame):
 
         # Perform necessary operations after returning.
         if returnID == wx.ID_OPEN:
-            print("Open")
+            if len(products) == 1:
+                self.masterPanel.setProduct(products[0])
         elif returnID == wx.ID_PRINT:
             print("Report")
 
@@ -237,13 +235,58 @@ class MainFrame(wx.Frame):
 
     def onImport(self, event):
         """
+        What to do when the import menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the import
+            menu item is selected.
+
+        Returns:
+          None
         """
 
         # Create the import data frame.
         imd.ImportFrame(self, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
-    def onShrinkHDF(self, event):
+    def onLink(self, event):
         """
+        What to do when the link menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the link menu
+            item is selected.
+
+        Returns:
+          None
+        """
+
+        # Create the link products frame.
+        lp.LinkFrame(self, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
+
+    def onSync(self, event):
+        """
+        What to do when the sync menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the sync menu
+            item is selected.
+
+        Returns:
+          None
+        """
+
+        pass
+
+    def onShrink(self, event):
+        """
+        What to do when the shrink menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the shrink
+            menu item is selected.
+
+        Returns:
+          None
         """
 
         # Repack the database.
@@ -251,31 +294,99 @@ class MainFrame(wx.Frame):
 
     def onQuit(self, event):
         """
+        What to do when the quit menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the quit menu
+            item is selected.
+
+        Returns:
+          None
         """
 
         self.Close()
 
     def onDataManager(self, event):
         """
+        What to do when the data manager menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the data
+            manager menu item is selected.
+
+        Returns:
+          None
         """
 
         # Create the data manager frame.
         dm.ManagerFrame(self, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
+    def onConn(self, event):
+        """
+        What to do when the connection menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the
+            connection menu item is selected.
+
+        Returns:
+          None
+        """
+
+        pass
+
+    def onPref(self, event):
+        """
+        What to do when the preferences menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the
+            preferences menu item is selected.
+
+        Returns:
+          None
+        """
+
+        pass
+
     def onDoc(self, event):
         """
+        What to do when the documentation menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the
+            documentation menu item is selected.
+
+        Returns:
+          None
         """
 
         sp.Popen("../doc/Forsteri.pdf", shell=True)
 
     def onHelp(self, event):
         """
+        What to do when the help menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the help menu
+            item is selected.
+
+        Returns:
+          None
         """
 
         wb.open("mailto:andrewh@pqmfg.com")
 
     def onAbout(self, event):
         """
+        What to do when the about menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the about menu
+            item is selected.
+
+        Returns:
+          None
         """
 
         # Create the description and license text.
@@ -301,7 +412,7 @@ Boston, MA  02111-1307  USA"""
 
         # Create and set the dialog information.
         info = wx.adv.AboutDialogInfo()
-        info.SetName("Forsteri")
+        info.SetName(TITLE)
         info.SetVersion("0.0.1")
         info.SetDescription(description)
         info.SetWebSite("http://github.com/Headstrung/forsteri")
@@ -315,6 +426,7 @@ Boston, MA  02111-1307  USA"""
 
 def main():
     """
+    When the file is called independently create and display the main frame.
     """
 
     # Create the application.
@@ -322,11 +434,11 @@ def main():
 
     # Create the bitmap used for the splash screen.
     bitmap = wx.Bitmap("/home/andrew/Dropbox/product-quest/Forsteri/data/" +\
-        "logo.png", wx.BITMAP_TYPE_PNG)
+        "img/logo.png", wx.BITMAP_TYPE_PNG)
 
     # Create the splash screen.
     splash = wx.adv.SplashScreen(bitmap,
-        wx.adv.SPLASH_CENTRE_ON_SCREEN|wx.adv.SPLASH_TIMEOUT, 20, None)
+        wx.adv.SPLASH_CENTRE_ON_SCREEN|wx.adv.SPLASH_TIMEOUT, 1000, None)
 
     # Create the main frame.
     MainFrame(None)

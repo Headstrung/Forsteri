@@ -1,0 +1,26 @@
+The software under development shall be from here on reffered to as Forsteri.
+
+A) General Requirements
+    1) Forsteri shall 
+    2) Forsteri shall 
+    3) Forsteri shall 
+
+B) User Interface Requirements
+    1) 
+    2) 
+    3) 
+
+C) Forecasting Requirements
+    1) 
+    2) 
+    3) 
+
+D) Preprocessing Requirements
+    1) 
+    2) 
+    3) 
+
+E) Utility Requirements
+    1) 
+    2) 
+    3) 

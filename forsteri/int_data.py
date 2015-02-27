@@ -123,7 +123,7 @@ def getVariables(connection=None):
 
     return variables
 
-def getTempCount(connection=None):
+def hasVariables(product, convert=False, connection=None):
     """
     """
 
@@ -133,36 +133,69 @@ def getTempCount(connection=None):
         connection = sqlite3.connect(MASTER)
         flag = True
 
-    # Get the variables list.
+    # Get the list of variables.
     variables = getVariables(connection)
+
+    # Initialize the list of had variables.
+    hasVariables = []
 
     # Create a cursor from the connection.
     cursor = connection.cursor()
 
-    # Execute the create table statement.
-    found = []
+    # Iterate over the list of variables.
     for variable in variables:
-        cursor.execute("SELECT product FROM {v} WHERE product LIKE 'TEMP-%'".\
-            format(v=variable))
-        found.append(cursor.fetchall())
+        cursor.execute("""SELECT product FROM {v} WHERE product='{p}'""".\
+            format(v=variable, p=product))
+        if cursor.fetchone() is not None:
+            hasVariables.append(variable)
 
     # Close the cursor.
     cursor.close()
-
-    # Convert to single list.
-    found = [int(y[0][5:]) for x in found for y in x]
 
     # Close the connection.
     if flag:
         connection.close()
 
-    # Determine the count of temporaries.
-    if len(found) == 0:
-        count = 0
-    else:
-        count = max(found)
+    # Convert if that flag has been given.
+    if convert:
+        hasVariables = [fromSQLName(x) for x in hasVariables]
 
-    return count
+    return hasVariables
+
+def latestData(product, variables, convert=False, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Convert the values to SQL names if needed.
+    if convert:
+        variables = [toSQLName(variable) for variable in variables]
+
+    # Initialize the latest list.
+    latest = []
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Iterate over the input variables.
+    for variable in variables:
+        cursor.execute("""SELECT MAX(date) FROM {v} WHERE product='{p}'""".\
+            format(v=variable, p=product))
+        latest.append(cursor.fetchone()[0])
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.close()
+
+    return latest
 
 """
 Managing Data
@@ -203,7 +236,6 @@ def getData(product, variable=None, connection=None):
     """
     """
 
-    # 
     # Open the master database if it is not supplied.
     flag = False
     if connection is None:
@@ -227,6 +259,46 @@ def getData(product, variable=None, connection=None):
         connection.close()
 
     return data
+
+def rediscretize(variable, connection=None):
+    """
+    Rediscretize a variable's data to be monthly.
+
+    Args:
+      variable (str): The variable to be rediscretized.
+      connection (sqlite3.Connection, optional): A connection to the database.
+    """
+
+    # Create the name of the monthly table.
+    variableRe = variable + "_monthly"
+
+    # Create the variable table if it does not already exist.
+    addVariable(variableRe, connection)
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the command to rediscretize to monthly.
+    cursor.execute("""INSERT OR REPLACE INTO {vr} (date, product, value) SELECT
+strftime('%Y-%m-01', date), product, sum(value) FROM {v} GROUP BY
+strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
+        v=variable))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
 
 """
 Helper/Utility Functions

@@ -41,25 +41,39 @@ Dialog Class
 """
 class OpenDialog(wx.Dialog):
     """
+    A dialog containing all products that are contained within the master
+    database. Also, a sorting feature based on the product's description is
+    included. From this dialog products can be altered, added, and removed.
+    This is the location where reports will be generated and products will be
+    opened.
+
+    Extends:
+      wx.Dialog
+
     To Do:
       1) Make the updating of list items occur without removing all items and
         adding new back.
-
-    To Do Far:
-      1) Add ways to search for products. Being by chemical or component.
-      2) Make the header clickable and sort by that column when clicked.
+      2) Add ways to search for products. Being by chemical or component.
+      3) Make the header clickable and sort by that column when clicked.
     """
 
     def __init__(self, *args, **kwargs):
         """
+        Initialize the open products dialog.
+
+        Args:
+          *args (tuple of object): Any arguments to be passed directly to the
+            super's constructor.
+          **kwargs (dictionary of name: object): Any keyword arguments to be
+            passed to the super's constructor.
+
+        Returns:
+          OpenDialog
         """
 
         ## Frame
         # Initialize by the parent's constructor.
         super().__init__(*args, **kwargs)
-
-        # Open a connection to the database.
-        self.connection = sqlite3.connect(isql.MASTER)
 
         # Create the sieve.
         self.sieve = dict.fromkeys(LABELS)
@@ -200,7 +214,6 @@ class OpenDialog(wx.Dialog):
         accelT = wx.AcceleratorTable([(wx.ACCEL_CTRL, ord("A"), selectAllId)])
         self.SetAcceleratorTable(accelT)
 
-        ## Frame Operations
         # Add the items to the selection sizer.
         selectSizer.Add(self.productList,
             flag=wx.LEFT|wx.RIGHT|wx.TOP, border=5)
@@ -211,12 +224,14 @@ class OpenDialog(wx.Dialog):
         selectSizer.Add(finishSizer, flag=wx.ALIGN_RIGHT)
         selectSizer.AddSpacer(5)
 
+        ## Frame Operations
         # Add everything to the master sizer.
-        #masterSizer.Add((5, 0))
         masterSizer.Add(searchSizer,
-            flag=wx.LEFT|wx.TOP|wx.BOTTOM|wx.ALIGN_TOP|wx.EXPAND,
-            border=5)
+            flag=wx.LEFT|wx.TOP|wx.BOTTOM|wx.ALIGN_TOP|wx.EXPAND, border=5)
         masterSizer.Add(selectSizer, flag=wx.EXPAND)
+
+        # Open a connection to the database.
+        self.connection = sqlite3.connect(isql.MASTER)
 
         # Update the displayed list.
         self.initializeList(None)
@@ -264,6 +279,14 @@ class OpenDialog(wx.Dialog):
     """
     def getChoices(self):
         """
+        Pull the possible choices for the combo boxes from the database.
+
+        Args:
+          None
+
+        Returns:
+          list of list of str: The lists of choices for each combo box in the
+            dialog box.
         """
 
         # Get the list of tiers.
@@ -311,7 +334,9 @@ class OpenDialog(wx.Dialog):
 
         return newData, newProducts
 
-    """ Event Handler Functions """
+    """
+    Event Handler Functions
+    """
     def initializeList(self, event):
         """
         """
@@ -336,10 +361,10 @@ class OpenDialog(wx.Dialog):
             self.productList.SetItem(index, 4, product[5])
             index += 1
 
-        return True
-
     def updateList(self, event):
         """
+        To Do:
+          1) Get the scroll bar to not change location when updating.
         """
 
         # Get the search criterion.
@@ -373,8 +398,6 @@ class OpenDialog(wx.Dialog):
             self.productList.SetItem(index, 3, product[4])
             self.productList.SetItem(index, 4, product[5])
             index += 1
-
-        return True
 
     def onSelected(self, event):
         """
@@ -444,21 +467,21 @@ class OpenDialog(wx.Dialog):
             # Call the multi add function.
             self.onAddMulti(event)
 
-            return False
+            return
 
         # Create the custom text entry dialog box.
         addDialog = InputDialog(self, title="Add Product")
 
         # If OK is not pressed, return false.
         if addDialog.ShowModal() != wx.ID_OK:
-            return False
+            return
 
         # Get the text from the dialog box.
         addProductData = addDialog.getTextEntry(missing=False)
 
         # Do nothing if the length of the inputted data is zero.
         if len(addProductData) == 0:
-            return False
+            return
 
         # If nothing is input for product send an error and return false.
         if "product" not in addProductData.keys():
@@ -466,7 +489,7 @@ class OpenDialog(wx.Dialog):
                 "Product cannot be empty.", "Error", wx.OK|wx.ICON_ERROR)
             errorDialog.ShowModal()
 
-            return False
+            return
 
         # Destroy the dialog box.
         addDialog.Destroy()
@@ -489,7 +512,7 @@ class OpenDialog(wx.Dialog):
 
         # If open is not pressed, return false.
         if openFileDialog.ShowModal() != wx.ID_OK:
-            return False
+            return
 
         # Read the data from the file.
         (data, newProducts) = self.readAddData(openFileDialog.GetPath())
@@ -515,14 +538,14 @@ class OpenDialog(wx.Dialog):
             # Call the multi edit function.
             self.onEditMulti(event, count)
 
-            return False
+            return
         # If nothing is selected, send an error.
         elif count == 0:
             errorDialog = wx.MessageDialog(self, "No item was selected.",
                 "Error", wx.OK|wx.ICON_ERROR)
             errorDialog.ShowModal()
 
-            return False
+            return
 
         # Get the selected item index from the list.
         productIndex = self.productList.GetFirstSelected()
@@ -541,7 +564,7 @@ class OpenDialog(wx.Dialog):
 
         # If OK is not pressed, return false.
         if editDialog.ShowModal() != wx.ID_OK:
-            return False
+            return
 
         # Get the text from the dialog box.
         newProductData = editDialog.getTextEntry(missing=True)
@@ -552,7 +575,7 @@ class OpenDialog(wx.Dialog):
                 "Product cannot be empty.", "Error", wx.OK|wx.ICON_ERROR)
             errorDialog.ShowModal()
 
-            return False
+            return
 
         # Destroy the dialog box.
         editDialog.Destroy()
@@ -564,7 +587,7 @@ class OpenDialog(wx.Dialog):
 
         # Do nothing if the length of the inputted data is zero.
         if len(newProductData) == 0:
-            return False
+            return
 
         # Add the inputted product data to the database.
         isql.setProduct(oldProductData[0], newProductData, self.connection)
@@ -584,7 +607,7 @@ class OpenDialog(wx.Dialog):
 
         # If OK is not pressed, return false.
         if editDialog.ShowModal() != wx.ID_OK:
-            return False
+            return
 
         # Get the text from the dialog box.
         newProductData = editDialog.getTextEntry()
@@ -625,7 +648,7 @@ class OpenDialog(wx.Dialog):
             errorDialog = wx.MessageDialog(self, "No item was selected.",
                 "Error", wx.OK|wx.ICON_ERROR)
             errorDialog.ShowModal()
-            return False
+            return
 
         # Get the number of selected products.
         count = self.productList.GetSelectedItemCount()
@@ -638,7 +661,7 @@ class OpenDialog(wx.Dialog):
 
         # If no is selected, return false.
         if confirmDialog.ShowModal() != wx.ID_YES:
-            return False
+            return
 
         # Destroy the dialog box.
         confirmDialog.Destroy()
@@ -729,10 +752,25 @@ Input Dialog Box Class
 """
 class InputDialog(wx.Dialog):
     """
+    A dialog containing the input boxes for an item. This dialog is used for
+    adding and editing a single item and can be used to edit multiple items.
+
+    Extends:
+      wx.Dialog
     """
 
     def __init__(self, *args, **kwargs):
         """
+        Initialize the input dialog.
+
+        Args:
+          *args (tuple of object): Any arguments to be passed directly to the
+            super's constructor.
+          **kwargs (dictionary of name: object): Any keyword arguments to be
+            passed to the super's constructor.
+
+        Returns:
+          InputDialog
         """
 
         # Initialize by the parent's constructor.
@@ -837,6 +875,14 @@ class InputDialog(wx.Dialog):
 
     def setTextEntry(self, text):
         """
+        Set the values in input dialog box.
+
+        Args:
+          text (list of str): A list containing the values to be input into the
+            entry fields.
+
+        Returns:
+          bool: True if successful, false otherwise.
         """
 
         # Iterate over the text control inputs and set their value.
@@ -852,6 +898,14 @@ class InputDialog(wx.Dialog):
 
     def setMultiEdit(self):
         """
+        Set the dialog box to be for multiple edits. This disables anything
+        that is unique to a product.
+        
+        Args:
+          None
+
+        Returns:
+          bool: True if successful, false otherwise.
         """
 
         # Set the first two fields as disabled.
@@ -865,6 +919,14 @@ class InputDialog(wx.Dialog):
     """
     def pullChoices(self):
         """
+        Pull the possible choices for the combo boxes from the database.
+
+        Args:
+          None
+
+        Returns:
+          list of list of str: The lists of choices for each combo box in the
+            dialog box.
         """
 
         # Get the list of tiers.
@@ -887,16 +949,32 @@ class InputDialog(wx.Dialog):
         return connect
 
     """
-    Event Handler Function
+    Event Handler Functions
     """
     def onOK(self, event):
         """
+        What to do when the OK button is pressed.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the OK button
+            is pressed.
+
+        Returns:
+          None
         """
 
         self.EndModal(wx.ID_OK)
 
     def onCancel(self, event):
         """
+        What to do when the cancel button is pressed.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the cancel
+            button is pressed.
+
+        Returns:
+          None
         """
 
         self.EndModal(wx.ID_CANCEL)
@@ -906,6 +984,7 @@ Start Application
 """
 def main():
     """
+    When the file is called independently create and display the main frame.
     """
 
     app = wx.App()

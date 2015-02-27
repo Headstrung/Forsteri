@@ -42,7 +42,7 @@ Main Functions
 """
 def importTimeseries(source, dateFormat, variable):
     """
-    Columns are time
+    Columns are time.
     """
 
     # Run the decompose function to get the full data.
@@ -55,32 +55,14 @@ def importTimeseries(source, dateFormat, variable):
     # Aggregate repeated products.
     data2 = aggregate(data2)
 
-    # Determine if the input is a sku.
-    try:
-        int(data2[1][0])
-        sku = True
-    except ValueError:
-        sku = False
-
-    # Get the product hash.
-    match = isql.getProductHash()
-
-    # Convert the basis column from skus to product codes.
-    if sku:
-        count = idata.getTempCount()
-        for row in data2:
-            try:
-                row[0] = match[row[0]]
-            except KeyError:
-                count += 1
-                row[0] = "TEMP-" + str(count)
+    # Perform the preinput operations.
+    data2 = preimport(data2)
 
     # Convert the variable name.
     variableName = idata.toSQLName(variable)
 
-    # Open a connection to the database.
+    # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)
-    cursor = connection.cursor()
 
     # Iterate over the data.
     rows = len(data2)
@@ -91,8 +73,7 @@ def importTimeseries(source, dateFormat, variable):
             idata.addData(variableName, [header[j], prod, data2[i][j]],
                 connection)
 
-    # Close the cursor and connection and commit changes.
-    cursor.close()
+    # Close the connection and commit changes to the data database.
     connection.commit()
     connection.close()
 
@@ -119,25 +100,8 @@ def importTimeseries2(source, dateFormat):
     for row in data2:
         del row[dateIndex]
 
-    # Determine if the input is a sku.
-    try:
-        int(data2[1][0])
-        sku = True
-    except ValueError:
-        sku = False
-
-    # Get the product hash.
-    match = isql.getProductHash()
-
-    # Convert the basis column from skus to product codes.
-    if sku:
-        count = idata.getTempCount()
-        for row in data2:
-            try:
-                row[0] = match[row[0]]
-            except KeyError:
-                count += 1
-                row[0] = "TEMP-" + str(count)
+    # Perform the preinput operations.
+    data2 = preimport(data2)
 
     # Open a connection to the database.
     connection = sqlite3.connect(idata.MASTER)
@@ -176,25 +140,8 @@ def importSingleTime(source, date):
     # Aggregate repeated products.
     data2 = aggregate(data2)
 
-    # Determine if the input is a sku.
-    try:
-        int(data2[1][0])
-        sku = True
-    except ValueError:
-        sku = False
-
-    # Get the product hash.
-    match = isql.getProductHash()
-
-    # Convert the basis column from skus to product codes.
-    if sku:
-        count = idata.getTempCount()
-        for row in data2:
-            try:
-                row[0] = match[row[0]]
-            except KeyError:
-                count += 1
-                row[0] = "TEMP-" + str(count)
+    # Perform the preinput operations.
+    data2 = preimport(data2)
 
     # Open a connection to the database.
     connection = sqlite3.connect(idata.MASTER)
@@ -215,6 +162,38 @@ def importSingleTime(source, date):
     connection.close()
 
     return True
+
+def preimport(data):
+    """
+    """
+
+    # Determine if the input is a sku.
+    try:
+        int(data[1][0])
+        sku = True
+    except ValueError:
+        sku = False
+
+    # Open a connection to the master database.
+    connection = sqlite3.connect(isql.MASTER)
+
+    # Get the product hash.
+    match = isql.getProductHash(connection)
+
+    # Convert the basis column from skus to product codes.
+    if sku:
+        for row in data:
+            try:
+                row[0] = match[row[0]]
+            except KeyError:
+                tempID = isql.addMissing(row[0], connection)
+                row[0] = "TEMP-" + str(tempID)
+
+    # Close the connection and commit changes to the master database.
+    connection.commit()
+    connection.close()
+
+    return data
 
 def decompose(source, dateFormat):
     """
@@ -332,12 +311,26 @@ def decomposeCut(source, dateFormat):
             del row[i]
 
     # Convert empty strings to zeros.
-    cols = len(data[0])
-    data = [0 if col == '' else col for row in data for col in row]
-    data = [data[y : y + cols] for y in range(0, len(data), cols)]
+    data = zeroOut(data)
+
+    # Change an empty string to be none.
+    if dateFormat == '':
+        dateFormat = None
+
+    # Date and time now.
+    dateNow = dt.datetime(1, 1, 1).now()
+
+    # Create the file info dictionary.
+    fileInfo = {"location": source,
+        "date_of_import": dateNow.strftime("%Y-%m-%d %H:%M:%S"),
+        "date_format": dateFormat}
+
+    # Add the import to the database.
+    importID = isql.addImport(fileInfo)
 
     # Create the title of the decomposed file.
-    output = source[:-4] + "-cut.csv"
+    output = ''.join([isql.DATA, "imported/", str(importID), '-',
+        fileInfo["date_of_import"], ".csv"])
 
     # Open the file and write the data.
     with open(output, 'w', newline='') as csvFile:
@@ -410,14 +403,24 @@ def checkDate(posDate, dateFormat):
             convert = dt.date(int(date['y']), int(date['m']), int(date['d']))
         else:
             if len(date['w']) > 0:
-                isoDate = isoToGregorian(int(date['y']), int(date['w']), 1)
-                convert = dt.date(int(date['y']), isoDate.month, isoDate.day)
+                convert = isoToGregorian(int(date['y']), int(date['w']), 1)
             else:
                 convert = dt.date(int(date['y']), int(date['m']), 1)
     except ValueError:
         return False
 
     return convert
+
+def zeroOut(data):
+    """
+    """
+
+    # Convert empty strings to zeros.
+    cols = len(data[0])
+    data = [0 if col == '' else col for row in data for col in row]
+    data = [data[y : y + cols] for y in range(0, len(data), cols)]
+
+    return data
 
 def isoYearStart(isoYear):
     """
@@ -426,6 +429,7 @@ def isoYearStart(isoYear):
 
     fourthJan = dt.date(isoYear, 1, 4)
     delta = dt.timedelta(fourthJan.isoweekday() - 1)
+
     return fourthJan - delta 
 
 def isoToGregorian(isoYear, isoWeek, isoDay):
@@ -434,4 +438,5 @@ def isoToGregorian(isoYear, isoWeek, isoDay):
     """
 
     yearStart = isoYearStart(isoYear)
+
     return yearStart + dt.timedelta(days=isoDay - 1, weeks=isoWeek - 1)
