@@ -24,17 +24,16 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 Import Declarations
 """
-import csv
 import gui_data_manager as dm
 import gui_import_data as imd
 import gui_link_products as lp
 import gui_open_product as omp
 import gui_product as pr
-import int_hdf5 as ihdf5
+import int_data as idata
 import subprocess as sp
+import threading as td
 import webbrowser as wb
 import wx
-import wx.html
 import wx.adv
 
 """
@@ -90,7 +89,7 @@ class MainFrame(wx.Frame):
         self.SetMenuBar(self.createMenuBar())
 
         # Set window properties.
-        self.SetSize((1000, 625))
+        self.SetSize((1050, 675))
         self.SetTitle(TITLE)
         self.Centre()
         self.Show(True)
@@ -122,14 +121,13 @@ class MainFrame(wx.Frame):
 
         # Create the Utilitites sub menu items.
         linkProducts = wx.MenuItem(utilities, wx.ID_CONVERT, "&Link Products")
-        syncDB = wx.MenuItem(utilities, wx.ID_UP, "&Sync Database")
-        shrinkHDF = wx.MenuItem(utilities, wx.ID_ZOOM_OUT, "&Shrink HDF5 File")
+        systematizeDB = wx.MenuItem(utilities, wx.ID_UP,
+            "&Systematize Database")
 
         # Add items to the Utilities sub menu.
         utilities.Append(linkProducts)
         utilities.AppendSeparator()
-        utilities.Append(syncDB)
-        utilities.Append(shrinkHDF)
+        utilities.Append(systematizeDB)
 
         # Add items to the File menu.
         fileMenu.Append(openProducts)
@@ -181,8 +179,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onOpen, openProducts)
         self.Bind(wx.EVT_MENU, self.onImport, importData)
         self.Bind(wx.EVT_MENU, self.onLink, linkProducts)
-        self.Bind(wx.EVT_MENU, self.onSync, syncDB)
-        self.Bind(wx.EVT_MENU, self.onShrink, shrinkHDF)
+        self.Bind(wx.EVT_MENU, self.onSystematize, systematizeDB)
         self.Bind(wx.EVT_MENU, self.onQuit, quit)
         self.Bind(wx.EVT_MENU, self.onDataManager, dataManager)
         self.Bind(wx.EVT_MENU, self.onConn, connections)
@@ -263,7 +260,7 @@ class MainFrame(wx.Frame):
         # Create the link products frame.
         lp.LinkFrame(self, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
-    def onSync(self, event):
+    def onSystematize(self, event):
         """
         What to do when the sync menu item has been selected.
 
@@ -275,22 +272,9 @@ class MainFrame(wx.Frame):
           None
         """
 
-        pass
-
-    def onShrink(self, event):
-        """
-        What to do when the shrink menu item has been selected.
-
-        Args:
-          event(wx._core.CommandEvent): The triggered event when the shrink
-            menu item is selected.
-
-        Returns:
-          None
-        """
-
-        # Repack the database.
-        ihdf5.repackDB()
+        # Systematize the database.
+        systematizeThread = td.Thread(target=idata.systematize)
+        systematizeThread.start()
 
     def onQuit(self, event):
         """

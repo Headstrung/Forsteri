@@ -24,6 +24,7 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 Import Declarations
 """
+import gui_data_viewer as dv
 import int_data as idata
 import int_sql as isql
 import wx
@@ -49,21 +50,22 @@ class ProductPanel(wx.Panel):
         super().__init__(*args, **kwargs)
 
         # Create the master sizer.
-        masterSizer = wx.GridBagSizer(5, 5)
+        masterSizer = wx.BoxSizer(wx.VERTICAL)
 
-        # Create the subsizers.
-        #subSizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        ## Product Attributes
+        # Create the product attributes sizer.
+        productSizer = wx.GridBagSizer(5, 5)
 
         ## Product Information
         # Create the product information sizer.
         infoSizer = wx.BoxSizer(wx.VERTICAL)
 
         # Create the static text for each attribute.
-        self.nameText = wx.StaticText(self, label="Product")
-        self.accountText = wx.StaticText(self, label="Account")
-        self.classText = wx.StaticText(self, label="Class")
-        self.categoryText = wx.StaticText(self, label="Category")
-        self.subcategoryText = wx.StaticText(self, label="Subcategory")
+        self.nameText = wx.StaticText(self)
+        self.accountText = wx.StaticText(self)
+        self.classText = wx.StaticText(self)
+        self.categoryText = wx.StaticText(self)
+        self.subcategoryText = wx.StaticText(self)
 
         # Create the fonts for the static texts.
         titleFont = wx.Font(22, wx.SWISS, wx.NORMAL, wx.BOLD)
@@ -91,12 +93,16 @@ class ProductPanel(wx.Panel):
         variablesSizer = wx.StaticBoxSizer(variablesSB, wx.VERTICAL)
 
         # Create the list control.
-        self.variablesList = wx.ListCtrl(self, size=(250, 100),
+        self.variablesList = wx.ListCtrl(self, size=(335, 100),
             style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES|wx.BORDER_SUNKEN)
+
+        # Bind actions to functions.
+        self.variablesList.Bind(wx.EVT_LEFT_DCLICK, self.onVariable)
 
         # Add columns to the list control.
         self.variablesList.InsertColumn(0, "Variable", width=150)
         self.variablesList.InsertColumn(1, "Latest Data", width=100)
+        self.variablesList.InsertColumn(2, "Count", width=75)
 
         # Add the list control to the sizer.
         variablesSizer.Add(self.variablesList, flag=wx.ALL, border=5)
@@ -110,6 +116,9 @@ class ProductPanel(wx.Panel):
 
         # Create the list box.
         self.relatedList = wx.ListBox(self, size=(150, 100))
+
+        # Bind actions to functions.
+        self.relatedList.Bind(wx.EVT_LEFT_DCLICK, self.onRelated)
 
         # Add the list box to the sizer.
         relatedSizer.Add(self.relatedList, flag=wx.ALL, border=5)
@@ -127,18 +136,25 @@ class ProductPanel(wx.Panel):
         # Add the list box to the sizer.
         linkedSizer.Add(self.linkedList, flag=wx.ALL, border=5)
 
-        ## Panel Operations
-        # Add everything to the master sizer.
-        masterSizer.Add(infoSizer, pos=(0, 0), flag=wx.LEFT|wx.TOP, border=5)
-        masterSizer.Add(variablesSizer, pos=(0, 1), flag=wx.TOP, border=5)
-        masterSizer.Add(relatedSizer, pos=(0, 2), flag=wx.TOP, border=5)
-        masterSizer.Add(linkedSizer, pos=(0, 3), flag=wx.TOP|wx.RIGHT,
+        ## Finish Product Attributes
+        # Add everything to the product sizer.
+        productSizer.Add(infoSizer, pos=(0, 0), flag=wx.LEFT|wx.TOP, border=5)
+        productSizer.Add(variablesSizer, pos=(0, 1), flag=wx.TOP, border=5)
+        productSizer.Add(relatedSizer, pos=(0, 2), flag=wx.TOP, border=5)
+        productSizer.Add(linkedSizer, pos=(0, 3), flag=wx.TOP|wx.RIGHT,
             border=5)
-        masterSizer.Add(wx.StaticLine(self), pos=(1, 0), span=(1, 4),
+        productSizer.Add(wx.StaticLine(self), pos=(1, 0), span=(1, 4),
             flag=wx.EXPAND)
 
         # Make the first column growable.
-        masterSizer.AddGrowableCol(0)
+        productSizer.AddGrowableCol(0)
+
+        ## Forecast
+        # 
+
+        ## Panel Operations
+        # Add everything to the master sizer.
+        masterSizer.Add(productSizer, flag=wx.EXPAND)
 
         # Set the master sizer for the panel.
         self.SetSizer(masterSizer)
@@ -147,6 +163,7 @@ class ProductPanel(wx.Panel):
         """
         """
 
+        ## Product Information
         # Get the data for the product from the database.
         data = isql.getProduct(product)
 
@@ -157,11 +174,15 @@ class ProductPanel(wx.Panel):
         self.categoryText.SetLabel(data[4])
         self.subcategoryText.SetLabel(data[5])
 
+        ## Product Variables
         # Get the variables.
         variables = idata.hasVariables(data[0], convert=True)
 
         # Get the latest data dates.
         latest = idata.latestData(data[0], variables, convert=True)
+
+        # Get the number of observations.
+        count = idata.obsCount(data[0], variables, convert=True)
 
         # Remove all items from the variables list.
         self.variablesList.DeleteAllItems()
@@ -171,8 +192,10 @@ class ProductPanel(wx.Panel):
         for variable in variables:
             self.variablesList.InsertItem(index, variable)
             self.variablesList.SetItem(index, 1, latest[index])
+            self.variablesList.SetItem(index, 2, str(count[index]))
             index += 1
 
+        ## Related Products
         # Get the related products.
         related = isql.getData({"class": data[3], "category": data[4],
             "subcategory": data[5]})
@@ -186,6 +209,9 @@ class ProductPanel(wx.Panel):
         # Set the items for the related list.
         self.relatedList.SetItems(related)
 
+        ## Linked Products
+        # 
+
         # Relayout the panel.
         self.Layout()
 
@@ -194,3 +220,25 @@ class ProductPanel(wx.Panel):
         """
 
         pass
+
+    """
+    Event Handler Functions
+    """
+    def onVariable(self, event):
+        """
+        """
+
+        # Get the variable selected.
+        variable = self.variablesList.GetItemText(self.variablesList.\
+            GetFirstSelected())
+
+        # 
+        dv.DataViewer(self.nameText.GetLabel(), variable, self)
+
+    def onRelated(self, event):
+        """
+        """
+
+        self.setProduct(self.relatedList.GetString(self.relatedList.\
+            GetSelection()))
+

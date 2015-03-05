@@ -416,10 +416,6 @@ def setProduct(product, productData, connection=None):
       bool: True if successful, false otherwise.
     """
 
-    # Check if the product is in the database.
-    if product not in getAttribute("product", connection):
-        return False
-
     # Open the master database if it is not supplied.
     flag = False
     if connection is None:
@@ -429,16 +425,14 @@ def setProduct(product, productData, connection=None):
     # Create a cursor from the connection.
     cursor = connection.cursor()
 
-    productInput = "'" + product + "'"
-
     # Iterate over the input product data dictionary.
     for (key, value) in productData.items():
         if value == '':
             change = key + "=NULL"
         else:
             change = key + "='" + value + "'"
-        cursor.execute("""UPDATE information SET {c} WHERE product={p}""".\
-            format(c=change, p=productInput))
+        cursor.execute("""UPDATE information SET {c} WHERE product='{p}'""".\
+            format(c=change, p=product))
 
     # Close the cursor.
     cursor.close()
@@ -490,8 +484,7 @@ def setProducts(products, productData, connection=None):
 
     # Iterate over the inputted products and change the data.
     for product in products:
-        product = "'" + product + "'"
-        cursor.execute("""UPDATE information SET {c} WHERE product={p}""".\
+        cursor.execute("""UPDATE information SET {c} WHERE product='{p}'""".\
             format(c=change, p=product))
 
     # Close the cursor.
@@ -541,6 +534,288 @@ def removeProduct(product, connection=None):
         connection.close()
 
     return True
+
+"""
+Hierarchy
+"""
+def addTitle(tier, title, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to add the title to the database.
+    cursor.execute("""INSERT INTO hierarchy VALUES ('{tr}', '{te}')""".\
+        format(tr=tier, te=title))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def setTitle(tier, oldTitle, newTitle, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""UPDATE hierarchy SET title='{te2}' WHERE tier='{tr}' AND
+title='{te1}'""".format(tr=tier, te1=oldTitle, te2=newTitle))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def removeTitle(tier, title, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""DELETE FROM hierarchy WHERE tier='{tr}' AND title='{te}'
+""".format(tr=tier, te=title))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def getTiers(connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""SELECT DISTINCT tier FROM hierarchy""")
+
+    # Fetch the returned data.
+    tiers = [tier[0] for tier in cursor.fetchall()]
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.close()
+
+    return tiers
+
+def getForTier(tier, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""SELECT title FROM hierarchy WHERE tier='{t}'""".\
+        format(t=tier))
+
+    # Fetch the returned data.
+    titles = [title[0] for title in cursor.fetchall()]
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.close()
+
+    return titles
+
+"""
+Variable
+"""
+def addAlias(variable, alias, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to add the title to the database.
+    cursor.execute("""INSERT INTO variable VALUES ('{v}', '{a}')""".\
+        format(v=variable, a=alias.lower()))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def setAlias(variable, oldAlias, newAlias, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""UPDATE variable SET alias='{a2}' WHERE variable='{v}' AND
+alias='{a1}'""".format(v=variable, a1=oldAlias, a2=newAlias))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def removeAlias(variable, alias, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""DELETE FROM variable WHERE variable='{v}' AND
+alias='{a}'""".format(v=variable, a=alias))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def getVariables(connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""SELECT DISTINCT variable FROM variable""")
+
+    # Fetch the returned data.
+    variables = [variable[0] for variable in cursor.fetchall()]
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.close()
+
+    return variables
+
+def getForVariable(variable, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""SELECT alias FROM variable WHERE variable='{v}'""".\
+        format(v=variable))
+
+    # Fetch the returned data.
+    aliases = [alias[0] for alias in cursor.fetchall()]
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.close()
+
+    return aliases
 
 """
 Missing Products

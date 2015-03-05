@@ -40,7 +40,7 @@ Constant Declarations
 """
 Main Functions
 """
-def importTimeseries(source, dateFormat, variable):
+def importTimeseries(source, dateFormat, variable, overwrite=False):
     """
     Columns are time.
     """
@@ -71,7 +71,7 @@ def importTimeseries(source, dateFormat, variable):
         prod = data2[i][0]
         for j in range(1, cols):
             idata.addData(variableName, [header[j], prod, data2[i][j]],
-                connection)
+                overwrite, connection)
 
     # Close the connection and commit changes to the data database.
     connection.commit()
@@ -79,13 +79,13 @@ def importTimeseries(source, dateFormat, variable):
 
     return True
 
-def importTimeseries2(source, dateFormat):
+def importTimeseries2(source, dateFormat, overwrite=False, shift=False):
     """
     There are multiple variables and a single column is time.
     """
 
     # Run the decompose function to get the full data.
-    data = decomposeCut(source, dateFormat)
+    data = decomposeCut(source, dateFormat, shift)
 
     # Extract the header.
     header = data[0]
@@ -114,7 +114,7 @@ def importTimeseries2(source, dateFormat):
         index2 = 1
         for col in row[1:]:
             idata.addData(idata.toSQLName(header[index2]), [dates[index1],
-                product, col], connection)
+                product, col], overwrite, connection)
             index2 += 1
         index1 += 1
 
@@ -125,7 +125,7 @@ def importTimeseries2(source, dateFormat):
 
     return True
 
-def importSingleTime(source, date):
+def importSingleTime(source, date, overwrite=True):
     """
     There are multiple variables and only one time.
     """
@@ -153,7 +153,7 @@ def importSingleTime(source, date):
         index = 1
         for col in row[1:]:
             idata.addData(idata.toSQLName(header[index]), [str(date),
-                product, col], connection)
+                product, col], overwrite, connection)
             index += 1
 
     # Close the cursor and connection and commit changes.
@@ -195,7 +195,7 @@ def preimport(data):
 
     return data
 
-def decompose(source, dateFormat):
+def decompose(source, dateFormat, shift=False):
     """
     The point of the decompose function is to take a file with an arbitrary
     header and extract only relevent information, based on associations with a
@@ -239,7 +239,10 @@ def decompose(source, dateFormat):
                 match.append("Missing")
                 remove.append(index)
             else:
-                match.append(date)
+                if shift:
+                    match.append(date + dt.timedelta(weeks=4))
+                else:
+                    match.append(date)
                 hasDate = True
 
         # Increment the index.
@@ -247,7 +250,7 @@ def decompose(source, dateFormat):
 
     return header, match, hasDate, firstDate
 
-def decomposeCut(source, dateFormat):
+def decomposeCut(source, dateFormat, shift=False):
     """
     The point of the decompose function is to take a file with an arbitrary
     header and extract only relevent information, based on associations with a
@@ -296,7 +299,10 @@ def decomposeCut(source, dateFormat):
                 # Add the missing variables to the remove list.
                 remove.append(index)
             else:
-                match.append(date)
+                if shift:
+                    match.append(date + dt.timedelta(weeks=4))
+                else:
+                    match.append(date)
 
         # Increment the index.
         index += 1

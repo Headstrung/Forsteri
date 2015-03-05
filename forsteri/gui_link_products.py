@@ -109,7 +109,7 @@ class LinkFrame(wx.Frame):
         okButton.SetDefault()
 
         # Add the buttons to the finish sizer.
-        finishSizer.AddMany([okButton, (5, 0), cancelButton, (5, 0)])
+        finishSizer.AddMany([okButton, (5, 0), cancelButton])
 
         # Bind the button presses to function.
         okButton.Bind(wx.EVT_BUTTON, self.onOK)

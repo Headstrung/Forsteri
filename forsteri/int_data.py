@@ -109,7 +109,7 @@ def getVariables(connection=None):
     cursor.execute("""SELECT name FROM sqlite_master WHERE type='table';""")
 
     # Fetch the returned values.
-    variables = cursor.fetchall()
+    variables = [variable[0] for variable in cursor.fetchall()]
 
     # Close the cursor.
     cursor.close()
@@ -117,9 +117,6 @@ def getVariables(connection=None):
     # Close the connection.
     if flag:
         connection.close()
-
-    # Only get the first index of the fetch.
-    variables = [variable[0] for variable in variables]
 
     return variables
 
@@ -197,10 +194,45 @@ def latestData(product, variables, convert=False, connection=None):
 
     return latest
 
+def obsCount(product, variables, convert=False, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Convert the values to SQL names if needed.
+    if convert:
+        variables = [toSQLName(variable) for variable in variables]
+
+    # Initialize the count list.
+    count = []
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # 
+    for variable in variables:
+        cursor.execute("""SELECT COUNT(value) FROM {v} WHERE product='{p}'""".\
+            format(v=variable, p=product))
+        count.append(cursor.fetchone()[0])
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.close()
+
+    return count
+
 """
 Managing Data
 """
-def addData(variable, data, connection=None):
+def addData(variable, data, overwrite=False, connection=None):
     """
     data (list): (date, product, value)
     """
@@ -218,9 +250,13 @@ def addData(variable, data, connection=None):
     # Create a cursor from the connection.
     cursor = connection.cursor()
 
-    # Remove the table from the database.
-    cursor.execute("""INSERT OR REPLACE INTO {v} VALUES {d}""".\
-        format(v=variable, d=dataStr))
+    # Insert the new data into the database.
+    if overwrite:
+        cursor.execute("""INSERT OR REPLACE INTO {v} VALUES {d}""".\
+            format(v=variable, d=dataStr))
+    else:
+        cursor.execute("""INSERT OR IGNORE INTO {v} VALUES {d}""".\
+            format(v=variable, d=dataStr))
 
     # Close the cursor.
     cursor.close()
@@ -232,7 +268,7 @@ def addData(variable, data, connection=None):
 
     return True
 
-def getData(product, variable=None, connection=None):
+def getData(product, variable, connection=None):
     """
     """
 
@@ -245,10 +281,11 @@ def getData(product, variable=None, connection=None):
     # Create a cursor from the connection.
     cursor = connection.cursor()
 
-    #
-    cursor.execute("""""".format())
+    # Execute the satement to pull all date and value data.
+    cursor.execute("""SELECT date, value FROM {v} WHERE product='{p}' ORDER BY
+date""".format(v=variable, p=product))
 
-    #
+    # Fetch the returned values.
     data = cursor.fetchall()
 
     # Close the cursor.
@@ -260,7 +297,56 @@ def getData(product, variable=None, connection=None):
 
     return data
 
-def rediscretize(variable, connection=None):
+def trimLeadingZeros(variable, connection=None):
+    """
+    Remove any leading in time zeros.
+
+    Args:
+      variable (str): The variable to be rediscretized.
+      connection (sqlite3.Connection, optional): A connection to the database.
+
+    Returns:
+      bool: True if sucessful, false otherwise.
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create the cursors from the connection.
+    cursor1 = connection.cursor()
+    cursor2 = connection.cursor()
+
+    # Get a list of the products in the variable.
+    cursor1.execute("""SELECT DISTINCT(product) FROM {v}""".format(v=variable))
+
+    # Iterate over the returned products.
+    for product in cursor1.fetchall():
+        cursor2.execute("""SELECT date, value FROM {v} WHERE product='{p}' 
+ORDER BY date""".format(v=variable, p=product[0]))
+
+        # Iterate over the returned data.
+        for element in cursor2.fetchall():
+            if element[1] == 0:
+                cursor2.execute("""DELETE FROM {v} WHERE date='{d}' AND 
+product='{p}'""".format(v=variable, d=element[0], p=product[0]))
+            else:
+                break
+
+    # Close the cursors.
+    cursor1.close()
+    cursor2.close()
+
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def rediscretize(variable, singular=False, connection=None):
     """
     Rediscretize a variable's data to be monthly.
 
@@ -285,10 +371,16 @@ def rediscretize(variable, connection=None):
     cursor = connection.cursor()
 
     # Execute the command to rediscretize to monthly.
-    cursor.execute("""INSERT OR REPLACE INTO {vr} (date, product, value) SELECT
-strftime('%Y-%m-01', date), product, sum(value) FROM {v} GROUP BY
+    if singular:
+        cursor.execute("""INSERT OR REPLACE INTO {vr} (date, product, value)
+SELECT strftime('%Y-%m-01', date), product, value FROM {v} GROUP BY
 strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
-        v=variable))
+            v=variable))
+    else:
+        cursor.execute("""INSERT OR REPLACE INTO {vr} (date, product, value)
+SELECT strftime('%Y-%m-01', date), product, sum(value) FROM {v} GROUP BY
+strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
+            v=variable))
 
     # Close the cursor.
     cursor.close()
@@ -303,6 +395,25 @@ strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
 """
 Helper/Utility Functions
 """
+def systematize():
+    """
+    """
+
+    # Open a connection to the data database.
+    connection = sqlite3.connect(MASTER)
+
+    # Get a list of all variables.
+    variables = getVariables(connection)
+
+    # Iterate over the variables performing operations on each.
+    for variable in variables:
+        trimLeadingZeros(variable, connection=connection)
+        #rediscretize(variable, connection=connection)
+
+    # Close and commit the connection.
+    connection.commit()
+    connection.close()
+
 def toSQLName(text):
     """
     """

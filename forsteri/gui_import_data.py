@@ -26,7 +26,6 @@ Import Declarations
 """
 import datetime as dt
 import int_data as idata
-import int_hdf5 as ihdf5
 import int_sql as isql
 import pro_decompose as dec
 import threading as td
@@ -90,6 +89,7 @@ class ImportFrame(wx.Frame):
         self.timeseriesRB.Bind(wx.EVT_RADIOBUTTON, self.onFile)
         singleRB.Bind(wx.EVT_RADIOBUTTON, self.onFile)
 
+        ## Date
         # Create the date text sizer.
         dateTextSizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -100,7 +100,7 @@ class ImportFrame(wx.Frame):
             wx.StaticText(masterPanel, label="Day")]
 
         # Add the date text to the date text sizer.
-        spacers = [(35, 0), (85, 0), (35, 0), (20, 0)]
+        spacers = [(50, 0), (85, 0), (35, 0), (20, 0)]
         index = 0
         for text in self.dateText:
             # Add each static text with a spacer value.
@@ -117,7 +117,8 @@ class ImportFrame(wx.Frame):
         dateEntrySizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # Get the choices for timeseries selection.
-        choices = ihdf5.getDateFormats()
+        choices = [date[1:] for date in isql.getForVariable("Date") if
+            date[0] == '$']
         currentDate = dt.date(1, 1, 1).today()
 
         # Create the date entry forms.
@@ -144,6 +145,11 @@ class ImportFrame(wx.Frame):
         dateEntrySizer.AddMany([self.dfEntry, (25, 0), self.stEntry[0],
             (5, 0), self.stEntry[1], (5, 0), self.stEntry[2]])
 
+        ## Last Selection
+        # Create the last selection sizer.
+        lastSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        ## File Picker
         # Create the file picker sizer.
         filePickerSizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -158,20 +164,42 @@ class ImportFrame(wx.Frame):
 
         # Add the text and file picker to the file picker sizer.
         filePickerSizer.Add(filePickerText, flag=wx.ALIGN_CENTER)
-        filePickerSizer.Add(self.filePicker)
+        filePickerSizer.Add(self.filePicker, flag=wx.LEFT, border=5)
 
         # Bind the selection of a file to a function.
         self.filePicker.Bind(wx.EVT_FILEPICKER_CHANGED, self.onFile)
+
+        ## Check Boxes
+        # Create the check sizer.
+        checkSizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Create the check boxes.
+        self.shiftCheck = wx.CheckBox(masterPanel, label="Shift Week")
+        self.overwriteCheck = wx.CheckBox(masterPanel, label="Overwrite")
+
+        # Initially disable the Walmart week check box.
+        self.shiftCheck.Disable()
+
+        # Bind check boxes to functions.
+        self.shiftCheck.Bind(wx.EVT_CHECKBOX, self.onFile)
+
+        # Add the check boxes to the sizer.
+        checkSizer.Add(self.shiftCheck, flag=wx.RIGHT|wx.ALIGN_LEFT, border=5)
+        checkSizer.Add(self.overwriteCheck,
+            flag=wx.TOP|wx.RIGHT|wx.ALIGN_LEFT, border=5)
+
+        # Add the file picker and check sizers to the last sizer.
+        lastSizer.Add(filePickerSizer)
+        lastSizer.AddSpacer(25)
+        lastSizer.Add(checkSizer)
 
         # Add everything to the file sizer.
         fileSizer.Add(fileTypeSizer, flag=wx.TOP|wx.ALIGN_CENTER, border=5)
         fileSizer.AddSpacer(10)
         fileSizer.Add(dateTextSizer, flag=wx.ALIGN_LEFT)
-        fileSizer.Add(dateEntrySizer, flag=wx.LEFT|wx.RIGHT|wx.ALIGN_CENTER,
-            border=5)
+        fileSizer.Add(dateEntrySizer, flag=wx.ALIGN_CENTER)
         fileSizer.AddSpacer(10)
-        fileSizer.Add(filePickerSizer, flag=wx.BOTTOM|wx.ALIGN_CENTER,
-            border=5)
+        fileSizer.Add(lastSizer, flag=wx.BOTTOM|wx.ALIGN_CENTER, border=5)
 
         ## File Analyzer
         # Create the header static box.
@@ -246,9 +274,12 @@ class ImportFrame(wx.Frame):
           bool: True if successful, false otherwise.
         """
 
+        # Get the shift check.
+        shift = self.shiftCheck.GetValue()
+
         # Decompose the file and extract the old and new headers.
         (oldHeaders, self.newHeaders, self.hasDate, self.firstDate) =\
-            dec.decompose(source, dateFormat)
+            dec.decompose(source, dateFormat, shift)
 
         # Create missing and ignored boolean lists.
         reason = []
@@ -298,10 +329,17 @@ class ImportFrame(wx.Frame):
             for index in range(0, 3):
                 self.dateText[index + 1].Disable()
                 self.stEntry[index].Disable()
+
+            # If a date format with week in it is selected enable walmart week.
+            if 'w' in self.dfEntry.GetValue():
+                self.shiftCheck.Enable()
+            else:
+                self.shiftCheck.Disable()
         else:
             # Enable the single time and disable the timeseries selections.
             self.dateText[0].Disable()
             self.dfEntry.Disable()
+            self.shiftCheck.Disable()
             for index in range(0, 3):
                 self.dateText[index + 1].Enable()
                 self.stEntry[index].Enable()
@@ -333,6 +371,9 @@ class ImportFrame(wx.Frame):
 
         # Get the file locations on the disk.
         source = self.filePicker.GetPath()
+
+        # Get whether or not to overwrite.
+        overwrite = self.overwriteCheck.GetValue()
 
         # If no source has been selected, show an error message and return.
         if source == '':
@@ -367,14 +408,17 @@ class ImportFrame(wx.Frame):
 
                     # Call the import timeseries function in a thread.
                     importThread = td.Thread(target=dec.importTimeseries,
-                        args=(source, dateFormat, variable))
+                        args=(source, dateFormat, variable, overwrite))
                     importThread.start()
 
                     self.Close()
                 else:
+                    # Get the shift check.
+                    shift = self.shiftCheck.GetValue()
+
                     # Call the import timeseries function in a thread.
                     importThread = td.Thread(target=dec.importTimeseries2,
-                        args=(source, dateFormat))
+                        args=(source, dateFormat, overwrite, shift))
                     importThread.start()
 
                     self.Close()
@@ -415,7 +459,7 @@ class ImportFrame(wx.Frame):
 
                 # Call the import timeseries function in a thread.
                 importThread = td.Thread(target=dec.importSingleTime,
-                    args=(source, date))
+                    args=(source, date, overwrite))
                 importThread.start()
 
                 self.Close()
@@ -509,7 +553,7 @@ class VariableDialog(wx.Dialog):
         """
 
         # Get the list of variables.
-        variables = ihdf5.getVariables()
+        variables = isql.getVariables()
 
         # Convert each variable to be aestetically pleasing.
         #variables = [variable.replace('_', ' ').title() for variable in\

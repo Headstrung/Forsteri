@@ -24,8 +24,9 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 Import Declarations
 """
-import int_hdf5 as ihdf5
+import int_sql as isql
 import os.path
+import sqlite3
 import wx
 
 """
@@ -47,7 +48,7 @@ class ManagerPanel(wx.Panel):
       wx.Panel
     """
 
-    def __init__(self, parent, id):
+    def __init__(self, id, connection, *args, **kwargs):
         """
         Initialize the panel.
 
@@ -66,13 +67,16 @@ class ManagerPanel(wx.Panel):
 
         ## Panel
         # Initialize by the parent's constructor.
-        super().__init__(parent, -1)
+        super().__init__(*args, **kwargs)
 
         # Set the ID for the panel.
         self.id = id
 
         # Create the master sizer.
         masterSizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Create a static connection.
+        self.connection = connection
 
         ## Combo Box
         # Get the combo box choices.
@@ -164,9 +168,9 @@ class ManagerPanel(wx.Panel):
 
         # Pull the possible tiers from the database.
         if self.id == ID_HIERARCHY:
-            return ihdf5.getTiers()
+            return isql.getTiers(self.connection)
         else:
-            return ihdf5.getVariables()
+            return isql.getVariables(self.connection)
 
     """
     Event Handler Functions
@@ -189,9 +193,11 @@ class ManagerPanel(wx.Panel):
 
         # Get the list for the selected tier.
         if self.id == ID_HIERARCHY:
-            items = ihdf5.getTierList(self.combo.GetStringSelection())
+            items = isql.getForTier(self.combo.GetStringSelection(),
+                self.connection)
         else:
-            items = ihdf5.getVariableList(self.combo.GetStringSelection())
+            items = isql.getForVariable(self.combo.GetStringSelection(),
+                self.connection)
 
         # Sort the items in ascending order.
         items.sort()
@@ -282,9 +288,11 @@ class ManagerPanel(wx.Panel):
 
         # Add the inputted text to the database.
         if self.id == ID_HIERARCHY:
-            ihdf5.addToTierList(self.combo.GetStringSelection(), newItem)
+            isql.addTitle(self.combo.GetStringSelection(), newItem,
+                self.connection)
         else:
-            ihdf5.addToVariableList(self.combo.GetStringSelection(), newItem)
+            isql.addAlias(self.combo.GetStringSelection(), newItem,
+                self.connection)
 
         # Update the list.
         self.updateList(None)
@@ -338,17 +346,11 @@ class ManagerPanel(wx.Panel):
         selection = self.combo.GetStringSelection()
 
         if self.id == ID_HIERARCHY:
-            # Remove the altered text from the database.
-            ihdf5.removeFromTierList(selection, oldItem)
-
-            # Add the inputted text to the database.
-            ihdf5.addToTierList(selection, newItem)
+            # Set the new item in the database.
+            isql.setTitle(selection, oldItem, newItem, self.connection)
         else:
-            # Remove the altered text from the database.
-            ihdf5.removeFromVariableList(selection, oldItem)
-
-            # Add the inputted text to the database.
-            ihdf5.addToVariableList(selection, newItem)
+            # Set the new item in the database.
+            isql.setAlias(selection, oldItem, newItem, self.connection)
 
         # Update the list.
         self.updateList(None)
@@ -397,10 +399,10 @@ class ManagerPanel(wx.Panel):
 
             if self.id == ID_HIERARCHY:
                 # Remove the selected item.
-                ihdf5.removeFromTierList(selection, item)
+                isql.removeTitle(selection, item, self.connection)
             else:
                 # Remove the selected item.
-                ihdf5.removeFromVariableList(selection, item)
+                isql.removeAlias(selection, item, self.connection)
 
             # Get the next selected item index.
             itemIndex = self.itemList.GetNextSelected(itemIndex)
@@ -419,7 +421,7 @@ class ManagerNotebook(wx.Notebook):
       wx.Notebook
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, connection, *args, **kwargs):
         """
         Initialize the notebook.
 
@@ -437,13 +439,13 @@ class ManagerNotebook(wx.Notebook):
         super().__init__(*args, **kwargs)
 
         # Create the hierarchy tab.
-        hierarchy = ManagerPanel(self, id=ID_HIERARCHY)
+        hierarchy = ManagerPanel(ID_HIERARCHY, connection, self)
 
         # Add the hierarchy page to the notebook.
         self.AddPage(hierarchy, "Hierarchy")
 
         # Create the variable tab.
-        variable = ManagerPanel(self, id=ID_VARIABLE)
+        variable = ManagerPanel(ID_VARIABLE, connection, self)
 
         # Add the manager page to the notebook.
         self.AddPage(variable, "Input Variable")
@@ -499,18 +501,18 @@ class ManagerFrame(wx.Frame):
         # Initialize by the parent's constructor.
         super().__init__(*args, **kwargs)
 
-        # Make a copy of the database file in case the user selects cancel.
-        ihdf5.forgeDB()
-
         # Create the master panel.
         masterPanel = wx.Panel(self)
 
         # Create the master sizer.
         masterSizer = wx.BoxSizer(wx.VERTICAL)
 
+        # Open a connection to the database.
+        self.connection = sqlite3.connect(isql.MASTER)
+
         """Initialize the notebook panel."""
         # Create the notebook.
-        notebook = ManagerNotebook(masterPanel)
+        notebook = ManagerNotebook(self.connection, masterPanel)
 
         """Initialize the finish buttons."""
         # Create the finish sizer.
@@ -567,8 +569,9 @@ class ManagerFrame(wx.Frame):
           None
         """
 
-        # Remove the unaltered version of the database file.
-        ihdf5.removeDB()
+        # Commit and close the database.
+        self.connection.commit()
+        self.connection.close()
 
         # Close the window.
         self.Close()
@@ -586,8 +589,8 @@ class ManagerFrame(wx.Frame):
           None
         """
 
-        # Reforge the database file.
-        ihdf5.forgeDB()
+        # Commit the database.
+        self.connection.commit()
 
     def onCancel(self, event):
         """
@@ -602,8 +605,8 @@ class ManagerFrame(wx.Frame):
           None
         """
 
-        # Replace the database file with the unaltered version.
-        ihdf5.replaceDB()
+        # Close the database.
+        self.connection.close()
 
         # Close the window.
         self.Close()
@@ -621,9 +624,8 @@ class ManagerFrame(wx.Frame):
           None
         """
 
-        # Replace the database file with the unaltered version, if it exists.
-        if os.path.isfile("../../data/temp.h5"):
-            ihdf5.replaceDB()
+        # Close the database.
+        self.connection.close()
 
         # Destroy the window.
         self.Destroy()

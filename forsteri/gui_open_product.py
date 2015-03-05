@@ -25,7 +25,6 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 Import Declarations
 """
 import csv
-import int_hdf5 as ihdf5
 import int_sql as isql
 import os.path
 import sqlite3
@@ -100,7 +99,7 @@ class OpenDialog(wx.Dialog):
         skuRB = wx.RadioButton(masterPanel, label="Sku")
 
         # Add the name type radio buttons to the name type sizer.
-        nameSizer.AddMany([self.productRB, (25, 0), skuRB])
+        nameSizer.AddMany([(5, 0), self.productRB, (25, 0), skuRB, (5, 0)])
 
         # Bind the radio buttons to a function.
         self.productRB.Bind(wx.EVT_RADIOBUTTON, self.updateList)
@@ -117,7 +116,8 @@ class OpenDialog(wx.Dialog):
         self.inputs[0] = wx.TextCtrl(masterPanel, size=(150, -1))
 
         # Add the name type and text entry to the search sizer.
-        searchSizer.AddMany([(0, 10), nameSizer, (0, 5), self.inputs[0]])
+        searchSizer.AddMany([(0, 10), nameSizer, (0, 5)])
+        searchSizer.Add(self.inputs[0], flag=wx.LEFT|wx.RIGHT, border=5)
 
         # Bind text entry to a function.
         self.inputs[0].Bind(wx.EVT_TEXT, self.updateList)
@@ -129,8 +129,10 @@ class OpenDialog(wx.Dialog):
                 label=LABELS[i + 2].title())
             self.inputs[i + 1] = wx.ComboBox(masterPanel, size=(150, -1),
                 choices=choices[i], style=wx.CB_READONLY|wx.CB_SORT)
-            searchSizer.AddMany([(0, 10), textLabels[i], (0, 5),
-                self.inputs[i + 1]])
+            searchSizer.AddSpacer(10)
+            searchSizer.Add(textLabels[i], flag=wx.LEFT|wx.BOTTOM, border=5)
+            searchSizer.Add(self.inputs[i + 1], flag=wx.LEFT|wx.RIGHT,
+                border=5)
             self.inputs[i + 1].Bind(wx.EVT_COMBOBOX, self.updateList)
 
         ## Selection
@@ -152,7 +154,7 @@ class OpenDialog(wx.Dialog):
         # Bind the selection of an item to a function.
         self.productList.Bind(wx.EVT_LIST_ITEM_SELECTED, self.onSelected)
         self.productList.Bind(wx.EVT_LIST_ITEM_DESELECTED, self.onSelected)
-        self.productList.Bind(wx.EVT_LEFT_DCLICK, self.onEdit)
+        self.productList.Bind(wx.EVT_LEFT_DCLICK, self.onOpen)
 
         ## Manipulate Buttons
         # Create the manipulate sizer.
@@ -191,7 +193,7 @@ class OpenDialog(wx.Dialog):
         cancelButton = wx.Button(masterPanel, id=wx.ID_CANCEL)
 
         # Set the ok button to be the dafault button.
-        applyButton.SetDefault()
+        openButton.SetDefault()
 
         # Add the buttons to the finish sizer.
         finishSizer.AddMany([reportButton, (5, 0), openButton, (5, 0),
@@ -234,14 +236,13 @@ class OpenDialog(wx.Dialog):
         self.connection = sqlite3.connect(isql.MASTER)
 
         # Update the displayed list.
-        self.initializeList(None)
+        self.updateList(None)
 
         # Set the sizer for the main panel.
         masterPanel.SetSizer(masterSizer)
 
         # Set window properties.
-        self.SetSize((875, 532))
-        self.SetTitle("Open/Manage Products")
+        self.SetSize((885, 532))
         self.Centre()
 
     """
@@ -290,12 +291,12 @@ class OpenDialog(wx.Dialog):
         """
 
         # Get the list of tiers.
-        tiers = ihdf5.getTiers()
+        tiers = isql.getTiers()
 
         # Get each list associated with each tier.
         connect = []
         for tier in tiers:
-            tierList = ihdf5.getTierList(tier)
+            tierList = isql.getForTier(tier)
 
             # Add an empty string for selection.
             tierList.append("")
@@ -337,30 +338,6 @@ class OpenDialog(wx.Dialog):
     """
     Event Handler Functions
     """
-    def initializeList(self, event):
-        """
-        """
-
-        # Get all of the products from the database.
-        data = isql.getAllData(self.connection)
-
-        # Reset the color of the edit and delete buttons.
-        self.editButton.SetBackgroundColour(wx.NullColour)
-        self.deleteButton.SetBackgroundColour(wx.NullColour)
-
-        # Remove all items from the list control and reset the index.
-        self.productList.DeleteAllItems()
-        index = 0
-
-        # Add the items to the list control.
-        for product in data:
-            self.productList.InsertItem(index, product[0])
-            self.productList.SetItem(index, 1, product[2])
-            self.productList.SetItem(index, 2, product[3])
-            self.productList.SetItem(index, 3, product[4])
-            self.productList.SetItem(index, 4, product[5])
-            index += 1
-
     def updateList(self, event):
         """
         To Do:
@@ -381,6 +358,9 @@ class OpenDialog(wx.Dialog):
 
         # Get all of the products from the database.
         data = isql.getData(self.sieve, self.connection)
+
+        # Set the title of the frame.
+        self.SetTitle("Open/Manage: " + str(len(data)) + " Products")
 
         # Reset the color of the edit and delete buttons.
         self.editButton.SetBackgroundColour(wx.NullColour)
@@ -930,12 +910,12 @@ class InputDialog(wx.Dialog):
         """
 
         # Get the list of tiers.
-        tiers = ihdf5.getTiers()
+        tiers = isql.getTiers()
 
         # Get each list associated with each tier.
         connect = []
         for tier in tiers:
-            tierList = ihdf5.getTierList(tier)
+            tierList = isql.getForTier(tier)
 
             # Add an empty string for selection.
             tierList.append("")
