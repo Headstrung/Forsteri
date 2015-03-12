@@ -25,6 +25,7 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 Import Declarations
 """
 import datetime as dt
+import int_data as idata
 import re
 import sqlite3
 
@@ -442,6 +443,10 @@ def setProduct(product, productData, connection=None):
         connection.commit()
         connection.close()
 
+    # Change name if a new product is given.
+    if "product" in productData:
+        idata.changeName(product, productData["product"])
+
     return True
 
 def setProducts(products, productData, connection=None):
@@ -581,6 +586,10 @@ def setTitle(tier, oldTitle, newTitle, connection=None):
     # Execute the statement to remove the tier title combo from the database.
     cursor.execute("""UPDATE hierarchy SET title='{te2}' WHERE tier='{tr}' AND
 title='{te1}'""".format(tr=tier, te1=oldTitle, te2=newTitle))
+
+    # Execute the statement to change any names in the information table.
+    cursor.execute("""UPDATE information SET {t}='{nt}' WHERE {t}='{ot}'""".\
+        format(t=tier, ot=oldTitle, nt=newTitle))
 
     # Close the cursor.
     cursor.close()
@@ -816,6 +825,34 @@ def getForVariable(variable, connection=None):
         connection.close()
 
     return aliases
+
+def getVariableHash(connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to remove the tier title combo from the database.
+    cursor.execute("""SELECT alias, variable FROM variable""")
+
+    # Fetch the returned data.
+    lookup = {alias[0]: alias[1] for alias in cursor.fetchall()}
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.close()
+
+    return lookup
 
 """
 Missing Products

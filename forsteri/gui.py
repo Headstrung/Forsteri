@@ -89,7 +89,7 @@ class MainFrame(wx.Frame):
         self.SetMenuBar(self.createMenuBar())
 
         # Set window properties.
-        self.SetSize((1050, 675))
+        self.SetSize((1050, 700))
         self.SetTitle(TITLE)
         self.Centre()
         self.Show(True)
@@ -120,11 +120,14 @@ class MainFrame(wx.Frame):
         quit = wx.MenuItem(fileMenu, wx.ID_EXIT)
 
         # Create the Utilitites sub menu items.
+        assignMissing = wx.MenuItem(utilities, wx.ID_JUMP_TO,
+            "&Assign Missing")
         linkProducts = wx.MenuItem(utilities, wx.ID_CONVERT, "&Link Products")
         systematizeDB = wx.MenuItem(utilities, wx.ID_UP,
             "&Systematize Database")
 
         # Add items to the Utilities sub menu.
+        utilities.Append(assignMissing)
         utilities.Append(linkProducts)
         utilities.AppendSeparator()
         utilities.Append(systematizeDB)
@@ -178,6 +181,7 @@ class MainFrame(wx.Frame):
         # Bind selections to functions.
         self.Bind(wx.EVT_MENU, self.onOpen, openProducts)
         self.Bind(wx.EVT_MENU, self.onImport, importData)
+        self.Bind(wx.EVT_MENU, self.onAssign, assignMissing)
         self.Bind(wx.EVT_MENU, self.onLink, linkProducts)
         self.Bind(wx.EVT_MENU, self.onSystematize, systematizeDB)
         self.Bind(wx.EVT_MENU, self.onQuit, quit)
@@ -245,6 +249,21 @@ class MainFrame(wx.Frame):
         # Create the import data frame.
         imd.ImportFrame(self, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
+    def onAssign(self, event):
+        """
+        What to do when the assign missing menu item has been selected.
+
+        Args:
+          event(wx._core.CommandEvent): The triggered event when the assign
+            missing menu item is selected.
+
+        Returns:
+          None
+        """
+
+        # 
+        pass
+
     def onLink(self, event):
         """
         What to do when the link menu item has been selected.
@@ -275,6 +294,9 @@ class MainFrame(wx.Frame):
         # Systematize the database.
         systematizeThread = td.Thread(target=idata.systematize)
         systematizeThread.start()
+
+        # Set the status bar to display the update.
+        #self.statusBar.SetStatusText("Running Systematization")
 
     def onQuit(self, event):
         """

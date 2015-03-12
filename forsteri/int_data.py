@@ -297,6 +297,37 @@ date""".format(v=variable, p=product))
 
     return data
 
+def changeName(oldName, newName, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Get the list of variables for the product.
+    variables = hasVariables(oldName, False, connection)
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Iterate over all of the variables that contain the product.
+    for variable in variables:
+        cursor.execute("""UPDATE {v} SET product='{nn}' WHERE
+product='{ol}'""".format(v=variable, ol=oldName, nn=newName))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
 def trimLeadingZeros(variable, connection=None):
     """
     Remove any leading in time zeros.
@@ -346,7 +377,7 @@ product='{p}'""".format(v=variable, d=element[0], p=product[0]))
 
     return True
 
-def rediscretize(variable, singular=False, connection=None):
+def rediscretize(variable, method="sum", connection=None):
     """
     Rediscretize a variable's data to be monthly.
 
@@ -371,14 +402,19 @@ def rediscretize(variable, singular=False, connection=None):
     cursor = connection.cursor()
 
     # Execute the command to rediscretize to monthly.
-    if singular:
+    if method == "singular":
         cursor.execute("""INSERT OR REPLACE INTO {vr} (date, product, value)
 SELECT strftime('%Y-%m-01', date), product, value FROM {v} GROUP BY
 strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
             v=variable))
-    else:
+    elif method == "sum":
         cursor.execute("""INSERT OR REPLACE INTO {vr} (date, product, value)
 SELECT strftime('%Y-%m-01', date), product, sum(value) FROM {v} GROUP BY
+strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
+            v=variable))
+    elif method == "average":
+        cursor.execute("""INSERT OR REPLACE INTO {vr} (date, product, value)
+SELECT strftime('%Y-%m-01', date), product, avg(value) FROM {v} GROUP BY
 strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
             v=variable))
 

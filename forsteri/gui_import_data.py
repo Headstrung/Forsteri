@@ -27,7 +27,7 @@ Import Declarations
 import datetime as dt
 import int_data as idata
 import int_sql as isql
-import pro_decompose as dec
+import pro_import as dec
 import threading as td
 import wx
 
@@ -393,6 +393,19 @@ class ImportFrame(wx.Frame):
                 # Check if there is a date in the headers.
                 if type(self.newHeaders[-1]) == dt.date or\
                     type(self.newHeaders[-2]) == dt.date:
+                    # Remove any empty strings from the headers list.
+                    self.newHeaders = list(filter(('').__ne__,
+                        self.newHeaders))
+
+                    # Check if there are any repeat dates.
+                    if len(self.newHeaders) != len(set(self.newHeaders)):
+                        errorDialog = wx.MessageDialog(self,
+                        "There are repeated dates in the header. Please " +
+                        "consider reformatting.", "Error", wx.OK|wx.ICON_ERROR)
+                        errorDialog.ShowModal()
+
+                        return
+
                     # Create the variable selection dialog box.
                     variableDlg = VariableDialog(self)
 

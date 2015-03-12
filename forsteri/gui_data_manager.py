@@ -57,6 +57,7 @@ class ManagerPanel(wx.Panel):
           id (int): The ID for the panel which defines what will be edited.
             This can currently be ID_HIERARCHY or ID_VARIABLE. As the software
             expands, so will the possibilities.
+          connection (sqlite3.Connection): A connection to the database.
 
         Returns:
           ManagerPanel
