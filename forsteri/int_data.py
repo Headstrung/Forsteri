@@ -24,6 +24,7 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 Import Declarations
 """
+import datetime as dt
 import sqlite3
 
 """
@@ -297,6 +298,85 @@ date""".format(v=variable, p=product))
 
     return data
 
+def updateForecast(product, method, forecast, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Find today's date.
+    today = dt.date(1, 1, 1).today()
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to indert the data into the database.
+    for month in range(0 ,12):
+        if month + 1 > today.month:
+            date = dt.date(today.year, month + 1, 1)
+        else:
+            date = dt.date(today.year + 1, month + 1, 1)
+        cursor.execute("""INSERT OR REPLACE INTO forecast (date, product, {m}) 
+VALUES ('{d}', '{p}', {f})""".format(m=method, d=str(date), p=product,
+    f=forecast[month]))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def getForecast(product, method=None, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # If a method is given, get only its data.
+    if method:
+        cursor.execute("""SELECT date, {m} FROM forecast WHERE product='{p}'
+ORDER BY date""".format(m=method, p=product))
+    else:
+        cursor.execute("""SELECT date, mlr, ema, arma, aux FROM forecast WHERE
+product='{p}' ORDER BY date""".format(p=product))
+
+    # Fetch the forecast values.
+    forecast = cursor.fetchall()
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.close()
+
+    # Create the final list.
+    final = dict()
+
+    # Iterate over all rows and find the first non nan value.
+    for row in forecast:
+        for i in range(1, len(row)):
+            if row[i] is not None:
+                final[dt.datetime.strptime(row[0], "%Y-%m-%d")] = row[i]
+                break
+
+    return final
+
 def changeName(oldName, newName, connection=None):
     """
     """
@@ -441,10 +521,24 @@ def systematize():
     # Get a list of all variables.
     variables = getVariables(connection)
 
+    # Only operate on non monthly data.
+    variablesNM = [x for x in variables if x[-8:] != "_monthly"]
+
+    # Remove forecast from the list.
+    variablesNM.remove("forecast")
+
+    # Create a list of singular variables.
+    singular = ["balance_on_order", "instock_store_count",
+        "need_for_target_inventory_level", "store_balance_on_hand",
+        "target_inventory_level", "aim_store_count", "balance_on_hand"]
+
     # Iterate over the variables performing operations on each.
-    for variable in variables:
+    for variable in variablesNM:
         trimLeadingZeros(variable, connection=connection)
-        #rediscretize(variable, connection=connection)
+        if variable in singular:
+            rediscretize(variable, method="singular", connection=connection)
+        else:
+            rediscretize(variable, connection=connection)
 
     # Close and commit the connection.
     connection.commit()

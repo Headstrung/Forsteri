@@ -115,6 +115,7 @@ class MainFrame(wx.Frame):
         # Create the File menu items.
         openProducts = wx.MenuItem(fileMenu, wx.ID_OPEN,
             "&Open/Manage Products")
+        newForecast = wx.MenuItem(fileMenu, wx.ID_NEW, "&New Item Forecast")
         importData = wx.MenuItem(fileMenu, wx.ID_ADD, "&Import Data")
         utilities = wx.Menu()
         quit = wx.MenuItem(fileMenu, wx.ID_EXIT)
@@ -125,15 +126,18 @@ class MainFrame(wx.Frame):
         linkProducts = wx.MenuItem(utilities, wx.ID_CONVERT, "&Link Products")
         systematizeDB = wx.MenuItem(utilities, wx.ID_UP,
             "&Systematize Database")
+        runModels = wx.MenuItem(utilities, wx.ID_EXECUTE, "&Run Models")
 
         # Add items to the Utilities sub menu.
         utilities.Append(assignMissing)
         utilities.Append(linkProducts)
         utilities.AppendSeparator()
         utilities.Append(systematizeDB)
+        utilities.Append(runModels)
 
         # Add items to the File menu.
         fileMenu.Append(openProducts)
+        fileMenu.Append(newForecast)
         fileMenu.Append(importData)
         fileMenu.AppendSeparator()
         fileMenu.AppendSubMenu(utilities, "&Utilities")
@@ -145,7 +149,7 @@ class MainFrame(wx.Frame):
         editMenu = wx.Menu()
 
         # Create the Edit menu items.
-        dataManager = wx.MenuItem(editMenu, wx.ID_EXECUTE,
+        dataManager = wx.MenuItem(editMenu, wx.ID_REFRESH,
             "&Data Manager...")
         connections = wx.MenuItem(editMenu, wx.ID_NETWORK, "&Connections")
         preferences = wx.MenuItem(editMenu, wx.ID_PREFERENCES)
@@ -180,6 +184,7 @@ class MainFrame(wx.Frame):
 
         # Bind selections to functions.
         self.Bind(wx.EVT_MENU, self.onOpen, openProducts)
+        self.Bind(wx.EVT_MENU, self.onNewForecast, newForecast)
         self.Bind(wx.EVT_MENU, self.onImport, importData)
         self.Bind(wx.EVT_MENU, self.onAssign, assignMissing)
         self.Bind(wx.EVT_MENU, self.onLink, linkProducts)
@@ -233,6 +238,12 @@ class MainFrame(wx.Frame):
 
         # Destroy the open/manage products dialog.
         openProd.Destroy()
+
+    def onNewForecast(self, event):
+        """
+        """
+
+        pass
 
     def onImport(self, event):
         """

@@ -372,7 +372,6 @@ def getProductHash(connection=None):
     """
     """
 
-    # 
     # Open the master database if it is not supplied.
     flag = False
     if connection is None:
@@ -400,6 +399,38 @@ NULL""")
     match = {x[1]: x[0] for x in data}
 
     return match
+
+def getProductNames(connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the command to pull all products that do not have a null sku.
+    cursor.execute("""SELECT DISTINCT product FROM information""")
+
+    # Fetch all of the returned data.
+    data = cursor.fetchall()
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.close()
+
+    # Get only the names of the products.
+    products = [x[0] for x in data]
+
+    return products
+
 
 def setProduct(product, productData, connection=None):
     """
@@ -901,7 +932,8 @@ def addImport(fileInfo, connection=None):
     # Put the inputs into the correct string form.
     columns = str(tuple(fileInfo.keys())).replace("'", '')
     values = str(tuple(fileInfo.values()))
-
+    print(columns)
+    print(values)
     # Open the master database if it is not supplied.
     flag = False
     if connection is None:

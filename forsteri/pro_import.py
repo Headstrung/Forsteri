@@ -319,8 +319,8 @@ def decomposeCut(source, dateFormat, shift=False):
     data = zeroOut(data)
 
     # Change an empty string to be none.
-    if dateFormat == '':
-        dateFormat = None
+    #if dateFormat == '':
+    #    dateFormat = None
 
     # Date and time now.
     dateNow = dt.datetime(1, 1, 1).now()
@@ -356,7 +356,7 @@ def aggregate(data):
 
     # Initialize the aggregated list.
     allData = []
-
+    print(data)
     # Initialize single product list.
     prod = [int(x) for x in data[0][1:]]
     prod.insert(0, data[0][0])

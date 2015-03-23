@@ -50,21 +50,30 @@ def runEMA(products=None):
 
     # Get all products if none are given.
     if products is None:
-        products = isql.getProductHash().values()
+        products = isql.getProductNames()
 
     # Iterate over each product.
     for product in products:
         # Get the data for the product.
         data = idata.getData(product, "finished_goods", connection)
 
+        # If no data is held for a product skip it.
+        if len(data) == 0:
+            continue
+
         # Convert the data to an overlapped numpy array.
         data = overlap(data)
 
-        # 
+        # Find the averages for each month.
         average = eMA(data, alpha=0.7)
 
-        # 
+        # Convert nan to None.
+        average = ['NULL' if np.isnan(x) else x for x in average]
 
+        # Add the forecasts to the database.
+        idata.updateForecast(product, 'ema', average)
+
+    return True
 
 def runMLR(products=None):
     """
@@ -73,7 +82,7 @@ def runMLR(products=None):
     """
 
     # 
-
+    pass
 
 """
 Model Functions
@@ -83,25 +92,49 @@ def eMA(data, alpha=None):
     Find the exponential moving average of some data.
 
     Args:
-      data (numpy.array): An array of data. If the dimension is 2 the columns
-        will be treated as separate variables.
+      data (numpy.array): An array of data.
       alpha (int, optional): The weighting factor.
 
     Returns:
       numpy.array: 
     """
 
+    # Find the shape of the input data.
+    shape = np.shape(data)
+
+    # If the dimension is higher than one run the function recursively.
+    if len(shape) == 2:
+        average = []
+        for i in range(0, shape[1]):
+            average.append(eMA([x[i] for x in data], alpha))
+        return average
+    elif len(shape) > 2:
+        raise(IndexError("this function can only take up to a 2 dimensional \
+array"))
+
     # If no alpha is given determine the alpha.
     if alpha is None:
         alpha = 2 / (len(data) + 1)
 
-    # Extract the first row to be the start of the average.
-    average = data[0]
-
-    # Iterate over the rows in data and determine the average.
+    # Find the compliment of alpha.
     comp = 1 - alpha
-    for i in np.arange(1, np.shape(data)[0]):
-        average = comp * average + alpha * data[i];
+
+    # Find the first non nan index.
+    try:
+        index = np.where(np.isnan(data) == False)[0][0]
+    except IndexError:
+        return data[-1]
+
+    # Set the initial average.
+    average = data[index]
+
+    # Iterate over all data points and update the average.
+    for i in range(index + 1, len(data)):
+        # If the value is nan then do not change the average.
+        if np.isnan(data[i]):
+            pass
+        else:
+            average = comp * average + alpha * data[i]
 
     return average
 
@@ -136,14 +169,14 @@ def overlap(data):
     lastYear = int(data2[-1][0][0 : 4])
     lastMonth = int(data2[-1][0][5 : 7])
 
-    # If the first month is not one add dates.
+    # If the first month is not one, add dates.
     if firstMonth != 1:
         temp = [(str(dt.date(firstYear, i, 1)), np.nan) for i in range(1,
             firstMonth)]
         temp.extend(data2)
         data2 = temp.copy()
 
-    # If the last month is not 12 add dates.
+    # If the last month is not 12, add dates.
     if lastMonth != 12:
         data2.extend([(str(dt.date(lastYear, i, 1)), np.nan) for i in \
             range(lastMonth + 1, 13)])

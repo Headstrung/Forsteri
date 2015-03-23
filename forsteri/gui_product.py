@@ -24,9 +24,13 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 Import Declarations
 """
+import copy
+import datetime as dt
 import gui_data_viewer as dv
 import int_data as idata
 import int_sql as isql
+import numpy as np
+import pro_model as pm
 import wx
 
 """
@@ -141,20 +145,88 @@ class ProductPanel(wx.Panel):
         productSizer.Add(infoSizer, pos=(0, 0), flag=wx.LEFT|wx.TOP, border=5)
         productSizer.Add(variablesSizer, pos=(0, 1), flag=wx.TOP, border=5)
         productSizer.Add(relatedSizer, pos=(0, 2), flag=wx.TOP, border=5)
-        productSizer.Add(linkedSizer, pos=(0, 3), flag=wx.TOP|wx.RIGHT,
-            border=5)
-        productSizer.Add(wx.StaticLine(self), pos=(1, 0), span=(1, 4),
-            flag=wx.EXPAND)
+        productSizer.Add(linkedSizer, pos=(0, 3),
+            flag=wx.TOP|wx.RIGHT|wx.BOTTOM, border=5)
 
         # Make the first column growable.
         productSizer.AddGrowableCol(0)
 
         ## Forecast
-        # 
+        # Create the forecast sizer.
+        forecastSizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Create the forecast label.
+        forecastText=wx.StaticText(self, label="Forecast")
+
+        # Set the font for the forecast text.
+        forecastText.SetFont(infoFont)
+
+        # Create the forecast list control.
+        self.forecastList = wx.ListCtrl(self, size=(-1, 60),
+            style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES|wx.BORDER_SUNKEN)
+
+        # Add columns to the list control.
+        self.forecastList.InsertColumn(0, "January")
+        self.forecastList.InsertColumn(1, "February")
+        self.forecastList.InsertColumn(2, "March")
+        self.forecastList.InsertColumn(3, "April")
+        self.forecastList.InsertColumn(4, "May")
+        self.forecastList.InsertColumn(5, "June")
+        self.forecastList.InsertColumn(6, "July")
+        self.forecastList.InsertColumn(7, "August")
+        self.forecastList.InsertColumn(8, "September")
+        self.forecastList.InsertColumn(9, "October")
+        self.forecastList.InsertColumn(10, "November")
+        self.forecastList.InsertColumn(11, "December")
+
+        # Add everything to the forecast sizer.
+        forecastSizer.Add(forecastText, flag=wx.LEFT|wx.TOP|wx.ALIGN_LEFT,
+            border=5)
+        forecastSizer.Add(self.forecastList, flag=wx.ALL|wx.ALIGN_RIGHT,
+            border=5)
+
+        ## History
+        # Create the history sizer.
+        historySizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Create the history label.
+        historyText=wx.StaticText(self, label="History")
+
+        # Set the font for the history text.
+        historyText.SetFont(infoFont)
+
+        # Create the history list control.
+        self.historyList = wx.ListCtrl(self, style=wx.LC_REPORT|wx.LC_HRULES|
+            wx.LC_VRULES|wx.BORDER_SUNKEN)
+
+        # Add columns to the list control.
+        self.historyList.InsertColumn(0, "Year", width=50)
+        self.historyList.InsertColumn(1, "January")
+        self.historyList.InsertColumn(2, "February")
+        self.historyList.InsertColumn(3, "March")
+        self.historyList.InsertColumn(4, "April")
+        self.historyList.InsertColumn(5, "May")
+        self.historyList.InsertColumn(6, "June")
+        self.historyList.InsertColumn(7, "July")
+        self.historyList.InsertColumn(8, "August")
+        self.historyList.InsertColumn(9, "September")
+        self.historyList.InsertColumn(10, "October")
+        self.historyList.InsertColumn(11, "November")
+        self.historyList.InsertColumn(12, "December")
+
+        # Add everything to the history sizer.
+        historySizer.Add(historyText, flag=wx.LEFT|wx.TOP|wx.ALIGN_LEFT,
+            border=5)
+        historySizer.Add(self.historyList, flag=wx.ALL|wx.ALIGN_RIGHT,
+            border=5)
 
         ## Panel Operations
         # Add everything to the master sizer.
         masterSizer.Add(productSizer, flag=wx.EXPAND)
+        masterSizer.Add(wx.StaticLine(self), flag=wx.EXPAND)
+        masterSizer.Add(forecastSizer, flag=wx.EXPAND)
+        masterSizer.Add(wx.StaticLine(self), flag=wx.EXPAND)
+        masterSizer.Add(historySizer, flag=wx.EXPAND)
 
         # Set the master sizer for the panel.
         self.SetSizer(masterSizer)
@@ -177,6 +249,12 @@ class ProductPanel(wx.Panel):
         ## Product Variables
         # Get the variables.
         variables = idata.hasVariables(data[0], convert=True)
+
+        # Remove nonvariables.
+        try:
+            variables.remove("Forecast")
+        except ValueError:
+            pass
 
         # Get the latest data dates.
         latest = idata.latestData(data[0], variables, convert=True)
@@ -211,6 +289,64 @@ class ProductPanel(wx.Panel):
 
         ## Linked Products
         # 
+
+        ## Forecast
+        # Get the forecast values.
+        forecast = idata.getForecast(product)
+
+        # Remove all items from the forecast list.
+        self.forecastList.DeleteAllItems()
+
+        # Get todays date.
+        today = dt.date(1, 1, 1).today()
+
+        # Add the row that will contain the forecasts.
+        try:
+            self.forecastList.InsertItem(0,
+                str(forecast[dt.datetime(today.year + 1, 1, 1)]))
+        except KeyError:
+            fError = wx.MessageDialog(self, "Forecast not available.",
+                style=wx.ICON_ERROR)
+            fError.ShowModal()
+
+        # Add each forecast for all months.
+        for (key, value) in forecast.items():
+            self.forecastList.SetItem(0, key.month - 1, "{:.0f}".format(value))
+
+        ## History
+        # Get the historical values.
+        history = idata.getData(product, "finished_goods")
+
+        # Convert the data into overlapped form.
+        try:
+            historyOverlap = pm.overlap(history)
+        except IndexError:
+            historyOverlap = []
+            hError = wx.MessageDialog(self, "Historical data not available.",
+                style=wx.ICON_ERROR)
+            hError.ShowModal()
+
+        # Determine the years in the data.
+        start = int(history[0][0][0 : 4])
+        end = int(history[-1][0][0 : 4])
+        years = list(range(start, end + 1))
+
+        # Remove all items from the forecast list.
+        self.historyList.DeleteAllItems()
+
+        # Iterate over the data and add it to the list control.
+        index1 = 0
+        for row in historyOverlap:
+            self.historyList.InsertItem(index1, "{:d}".format(years[index1]))
+            index2 = 1
+            for col in row:
+                if np.isnan(col):
+                    self.historyList.SetItem(index1, index2, '')
+                else:
+                    self.historyList.SetItem(index1, index2,
+                        "{:.0f}".format(col))
+                index2 += 1
+            index1 += 1
 
         # Relayout the panel.
         self.Layout()
