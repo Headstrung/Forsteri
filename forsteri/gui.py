@@ -27,9 +27,11 @@ Import Declarations
 import gui_data_manager as dm
 import gui_import_data as imd
 import gui_link_products as lp
+import gui_new_item as nif
 import gui_open_product as omp
 import gui_product as pr
 import int_data as idata
+import pro_model as pm
 import subprocess as sp
 import threading as td
 import webbrowser as wb
@@ -89,7 +91,7 @@ class MainFrame(wx.Frame):
         self.SetMenuBar(self.createMenuBar())
 
         # Set window properties.
-        self.SetSize((1050, 700))
+        self.SetSize((1050, 600))
         self.SetTitle(TITLE)
         self.Centre()
         self.Show(True)
@@ -189,6 +191,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onAssign, assignMissing)
         self.Bind(wx.EVT_MENU, self.onLink, linkProducts)
         self.Bind(wx.EVT_MENU, self.onSystematize, systematizeDB)
+        self.Bind(wx.EVT_MENU, self.onModel, runModels)
         self.Bind(wx.EVT_MENU, self.onQuit, quit)
         self.Bind(wx.EVT_MENU, self.onDataManager, dataManager)
         self.Bind(wx.EVT_MENU, self.onConn, connections)
@@ -243,7 +246,8 @@ class MainFrame(wx.Frame):
         """
         """
 
-        pass
+        # Create the new item forecast frame.
+        nif.NewItemFrame(self, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
     def onImport(self, event):
         """
@@ -306,8 +310,17 @@ class MainFrame(wx.Frame):
         systematizeThread = td.Thread(target=idata.systematize)
         systematizeThread.start()
 
-        # Set the status bar to display the update.
-        #self.statusBar.SetStatusText("Running Systematization")
+    def onModel(self, event):
+        """
+        """
+
+        # Create and run the EMA model thread.
+        eMAThread = td.Thread(target=pm.runEMA)
+        eMAThread.start()
+
+        # Create and run the MLR model thread.
+        #mLRThread = td.Thread(target=pm.runMLR)
+        #mLRThread.start()
 
     def onQuit(self, event):
         """
@@ -458,7 +471,7 @@ def main():
         wx.adv.SPLASH_CENTRE_ON_SCREEN|wx.adv.SPLASH_TIMEOUT, 1000, None)
 
     # Create the main frame.
-    MainFrame(None)
+    MainFrame(None, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
     # Start the application main loop.
     app.MainLoop()

@@ -1108,21 +1108,7 @@ def getLinksTo(product, connection=None):
         format(n=product))
 
     # Fetch all of the returned data.
-    prelink = [x[0] for x in cursor.fetchall()]
-
-    # Iterate until no values are returned.
-    while len(prelink) != 0:
-        print(prelink)
-        if len(prelink) == 1:
-            links.append(prelink[0])
-            cursor.execute("""SELECT old FROM link WHERE new='{n}'""".\
-                format(n=product))
-            prelink = [x[0] for x in cursor.fetchall()]
-        else:
-            for link in prelink:
-                t = getLinksTo(link, connection)
-                links.extend(t)
-            break
+    links = [x[0] for x in cursor.fetchall()]
 
     # Close the cursor.
     cursor.close()

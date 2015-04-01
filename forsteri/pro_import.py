@@ -356,7 +356,7 @@ def aggregate(data):
 
     # Initialize the aggregated list.
     allData = []
-    print(data)
+
     # Initialize single product list.
     prod = [int(x) for x in data[0][1:]]
     prod.insert(0, data[0][0])

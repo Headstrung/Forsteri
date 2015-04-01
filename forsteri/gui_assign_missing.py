@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Graphical User Interface
+Assign Missing Items Frame
 
 Copyright (C) 2014, 2015 by Andrew Chalres Hawkins
 

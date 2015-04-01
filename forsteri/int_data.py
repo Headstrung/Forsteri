@@ -298,6 +298,69 @@ date""".format(v=variable, p=product))
 
     return data
 
+def getAllData(product, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Get the variables that exist for the product.
+    variables = hasVariables(product)
+
+    # Remove nonmonthly variables.
+    variables = [variable for variable in variables if variable[-8:] ==\
+        "_monthly"]
+
+    # Check for finished goods monthly.
+    if "finished_goods_monthly" not in variables:
+        print("Finished goods monthly was not found in the database.")
+        return None, None
+
+    # Create the repeated strings.
+    select = "finished_goods_monthly.date, finished_goods_monthly.value, "
+    joins = ""
+    inj = " INNER JOIN "
+    dte = ".date"
+    pdt = ".product"
+    fgd = "finished_goods_monthly.date="
+    fgp = "finished_goods_monthly.product="
+
+    # Create header information.
+    header = ["date", "finished_goods_monthly"]
+
+    # Iterate over the variables and create the string.
+    for variable in variables:
+        if variable != "finished_goods_monthly":
+            select = select + variable + ".value, "
+            joins = joins + inj + variable + " ON " + fgd + variable + dte +\
+                " AND " + fgp + variable + pdt
+            header.append(variable)
+
+    select = select[0 : len(select) - 2]
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the statement to get the data.
+    cursor.execute("""SELECT {s} FROM finished_goods_monthly{j} WHERE 
+finished_goods_monthly.product='{p}'""".format(s=select, j=joins, p=product))
+
+    # Fetch all data.
+    data = cursor.fetchall()
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.close()
+
+    return header, data
+
 def updateForecast(product, method, forecast, connection=None):
     """
     """
@@ -320,9 +383,14 @@ def updateForecast(product, method, forecast, connection=None):
             date = dt.date(today.year, month + 1, 1)
         else:
             date = dt.date(today.year + 1, month + 1, 1)
-        cursor.execute("""INSERT OR REPLACE INTO forecast (date, product, {m}) 
-VALUES ('{d}', '{p}', {f})""".format(m=method, d=str(date), p=product,
-    f=forecast[month]))
+        try:
+            cursor.execute("""INSERT INTO forecast (date, product) VALUES
+('{d}', '{p}')""".format(d=date, p=product))
+        except sqlite3.IntegrityError:
+            pass
+        cursor.execute("""UPDATE forecast SET {m}={f} WHERE
+date='{d}' AND product='{p}'""".format(m=method, f=forecast[month], d=date,
+    p=product))
 
     # Close the cursor.
     cursor.close()
@@ -508,6 +576,94 @@ strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
 
     return True
 
+"""
+Linking
+"""
+def linkData(old, new, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Get the variables assigned to the old product.
+    variables = hasVariables(new)
+    variables = [x for x in variables if x[-8:] != "_monthly"]
+    variables.remove("forecast")
+
+    # Iterate over the variables.
+    for variable in variables:
+        # Get the earliest date from the new product.
+        cursor.execute("""SELECT MIN(date) FROM {v} WHERE product='{n}'""".\
+            format(v=variable, n=new))
+        firstDate = cursor.fetchone()[0]
+
+        # Get all data from the old product before the first date.
+        cursor.execute("""SELECT date, value FROM {v} WHERE product='{o}' AND
+date<'{d}' ORDER BY date""".format(v=variable, o=old, d=firstDate))
+        dataTemp = cursor.fetchall()
+
+        # Iterate over the values that were pulled from the old product.
+        for point in dataTemp:
+            cursor.execute("""INSERT INTO {v} (date, product, value) VALUES
+('{d}', '{n}', {val})""".format(v=variable, d=point[0], n=new, val=point[1]))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def unlinkData(old, new, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Get the variables assigned to the old product.
+    variables = hasVariables(new)
+    variables = [x for x in variables if x[-8:] != "_monthly"]
+    variables.remove("forecast")
+
+    # Iterate over the variables.
+    for variable in variables:
+        # Get the data for the old product.
+        cursor.execute("""SELECT date, value FROM {v} WHERE product='{o}'""".\
+            format(v=variable, o=old))
+        oldData = cursor.fetchall()
+
+        # Iterate over the old data.
+        for point in oldData:
+            cursor.execute("""DELETE FROM {v} WHERE date='{d}' AND
+product='{n}' AND value={val}""".format(v=variable, d=point[0], n=new,
+    val=point[1]))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
 """
 Helper/Utility Functions
 """

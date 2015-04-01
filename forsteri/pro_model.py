@@ -67,11 +67,15 @@ def runEMA(products=None):
         # Find the averages for each month.
         average = eMA(data, alpha=0.7)
 
-        # Convert nan to None.
-        average = ['NULL' if np.isnan(x) else x for x in average]
+        # Convert nan to NULL.
+        average = ["NULL" if np.isnan(x) else x for x in average]
 
         # Add the forecasts to the database.
-        idata.updateForecast(product, 'ema', average)
+        idata.updateForecast(product, "ema", average, connection)
+
+    # Commit and close the connection.
+    connection.commit()
+    connection.close()
 
     return True
 
@@ -81,8 +85,53 @@ def runMLR(products=None):
     available variables.
     """
 
-    # 
-    pass
+    # Open a connection to the data database.
+    connection = sqlite3.connect(idata.MASTER)
+
+    # Get all products if none are given.
+    if products is None:
+        products = isql.getProductNames()
+
+    # Iterate over each product.
+    for product in products:
+        print(product)
+        # Get the data for the current product.
+        (header, data) = idata.getAllData(product)
+
+        # If there is no data for a product, skip to the next product.
+        if data is None:
+            continue
+
+        # Process the data into a the overlap form.
+        dataNew = overlap3(data)
+
+        # Iterate over each month.
+        forecast = []
+        for i in range(0, 12):
+            try:
+                # Determine the coefficient values
+                (beta, fit) = mLR(dataNew[i][:, 0], dataNew[i][:, 1:])
+
+                # Determine the values to use for each variable.
+                vals = np.concatenate((np.array([1]), eMA(dataNew[i][:, 1:])))
+
+                # Find the forecast.
+                forecast.append(np.dot(vals, beta))
+            except IndexError:
+                # Add nan to the forecast.
+                forecast.append(np.nan)
+
+        # Concert nan to NULL.
+        forecast = ["NULL" if np.isnan(x) else x for x in forecast]
+
+        # Add the forecast values to the database.
+        idata.updateForecast(product, "mlr", forecast, connection)
+
+    # Commit and close the connection.
+    connection.commit()
+    connection.close()
+
+    return True
 
 """
 Model Functions
@@ -150,7 +199,10 @@ def mLR(dep, ind):
     # Determine the weighting coefficients.
     beta = np.dot(np.dot(np.linalg.pinv(np.dot(indB.T, indB)), indB.T), dep)
 
-    return beta
+    # Determine the historical fit of data.
+    fit = np.dot(indB, beta)
+
+    return beta, fit
 
 """
 Helper Functions
@@ -188,3 +240,111 @@ def overlap(data):
     new = np.array([values[i : i + 12] for i in range(0, len(values), 12)])
 
     return new
+
+def overlap2(data):
+    """
+    """
+
+    # Make a copy of the data.
+    data2 = data.copy()
+
+    # Extract the first and last year and month.
+    firstYear = int(data2[0][0][0 : 4])
+    firstMonth = int(data2[0][0][5 : 7])
+    lastYear = int(data2[-1][0][0 : 4])
+    lastMonth = int(data2[-1][0][5 : 7])
+
+    naTemp = [np.nan] * (len(data2[0]) - 1)
+
+    # If the first month is not one, add dates with nan values.
+    if firstMonth != 1:
+        head = []
+        for i in range(1, firstMonth):
+            temp = [str(dt.date(firstYear, i, 1))]
+            temp.extend(naTemp)
+            head.append(tuple(temp))
+        head.extend(data2)
+        data2 = head.copy()
+
+    # If the last month is not 12, add dates with nan values.
+    if lastMonth != 12:
+        tail = []
+        for i in range(lastMonth + 1, 13):
+            temp = [str(dt.date(lastYear, i, 1))]
+            temp.extend(naTemp)
+            tail.append(tuple(temp))
+        data2.extend(tail)
+
+    final = [[] for i in range(0, 12)]
+    index = 1
+    for x in data2:
+        final[index % 12].append(x[1:])
+        index += 1
+
+    return final
+
+def overlap3(data):
+    """
+    """
+
+    #
+    dataC = data.copy()
+
+    temp = [[] for i in range(0, 12)]
+
+    index = int(dataC[0][0][5 : 7])
+    for x in dataC:
+        temp[(index % 12) - 1].append(x[1:])
+        index += 1
+
+    final = []
+    for x in temp:
+        final.append(np.array(x))
+
+    return final
+
+def curtail(data):
+    """
+    """
+
+    # Make a copy of the data.
+    variables = data.copy()
+
+    # Find all of the start and end dates.
+    starts = []
+    ends = []
+    for variable in variables.values():
+        starts.append(variable[0][0])
+        ends.append(variable[-1][0])
+
+    # Determine the latest start and the earliest end.
+    first = max(starts)
+    last = min(ends)
+
+    # Extract the data.
+    newData = dict()
+    for (key, value) in variables.items():
+        temp = []
+        for point in value:
+            if point[0] < first or point[0] > last:
+                pass
+            else:
+                temp.append(point)
+        newData[key] = temp
+
+    return newData
+
+def separate(data):
+    """
+    """
+
+    # 
+    for (key, value) in data.items():
+        for i in range(0, 12):
+            months[i + 1] = np.column_stack(months[i + 1], )
+
+
+
+
+
+

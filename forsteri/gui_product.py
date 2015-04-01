@@ -24,7 +24,6 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 Import Declarations
 """
-import copy
 import datetime as dt
 import gui_data_viewer as dv
 import int_data as idata
@@ -55,6 +54,9 @@ class ProductPanel(wx.Panel):
 
         # Create the master sizer.
         masterSizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Create the product variable.
+        self.product = None
 
         ## Product Attributes
         # Create the product attributes sizer.
@@ -155,11 +157,31 @@ class ProductPanel(wx.Panel):
         # Create the forecast sizer.
         forecastSizer = wx.BoxSizer(wx.VERTICAL)
 
+        # Create the model type sizer.
+        typeSizer = wx.BoxSizer(wx.HORIZONTAL)
+
         # Create the forecast label.
-        forecastText=wx.StaticText(self, label="Forecast")
+        forecastText = wx.StaticText(self, label="Forecast")
 
         # Set the font for the forecast text.
         forecastText.SetFont(infoFont)
+
+        # Create the radio buttons.
+        self.buttonOne = wx.RadioButton(self, label="Method 1",
+            style=wx.RB_GROUP)
+        self.buttonTwo = wx.RadioButton(self, label="Method 2")
+
+        # Bind the buttons to functions.
+        self.buttonOne.Bind(wx.EVT_RADIOBUTTON, self.onRadioButton)
+        self.buttonTwo.Bind(wx.EVT_RADIOBUTTON, self.onRadioButton)
+
+        # Add the items to the type sizer.
+        typeSizer.Add(forecastText, flag=wx.LEFT|wx.TOP|wx.ALIGN_LEFT,
+            border=5)
+        typeSizer.AddSpacer(25)
+        typeSizer.Add(self.buttonOne, flag=wx.TOP, border=5)
+        typeSizer.AddSpacer(15)
+        typeSizer.Add(self.buttonTwo, flag=wx.TOP, border=5)
 
         # Create the forecast list control.
         self.forecastList = wx.ListCtrl(self, size=(-1, 60),
@@ -180,8 +202,7 @@ class ProductPanel(wx.Panel):
         self.forecastList.InsertColumn(11, "December")
 
         # Add everything to the forecast sizer.
-        forecastSizer.Add(forecastText, flag=wx.LEFT|wx.TOP|wx.ALIGN_LEFT,
-            border=5)
+        forecastSizer.Add(typeSizer)
         forecastSizer.Add(self.forecastList, flag=wx.ALL|wx.ALIGN_RIGHT,
             border=5)
 
@@ -196,8 +217,8 @@ class ProductPanel(wx.Panel):
         historyText.SetFont(infoFont)
 
         # Create the history list control.
-        self.historyList = wx.ListCtrl(self, style=wx.LC_REPORT|wx.LC_HRULES|
-            wx.LC_VRULES|wx.BORDER_SUNKEN)
+        self.historyList = wx.ListCtrl(self, size=(-1, 200),
+            style=wx.LC_REPORT|wx.LC_HRULES|wx.LC_VRULES|wx.BORDER_SUNKEN)
 
         # Add columns to the list control.
         self.historyList.InsertColumn(0, "Year", width=50)
@@ -236,6 +257,9 @@ class ProductPanel(wx.Panel):
         """
 
         ## Product Information
+        # Set the variable to be the updated product.
+        self.product = product
+
         # Get the data for the product from the database.
         data = isql.getProduct(product)
 
@@ -251,6 +275,7 @@ class ProductPanel(wx.Panel):
         variables = idata.hasVariables(data[0], convert=True)
 
         # Remove nonvariables.
+        variables = [x for x in variables if x[-8:] == " Monthly"]
         try:
             variables.remove("Forecast")
         except ValueError:
@@ -268,7 +293,8 @@ class ProductPanel(wx.Panel):
         # Add the new items to the variables list.
         index = 0
         for variable in variables:
-            self.variablesList.InsertItem(index, variable)
+            self.variablesList.InsertItem(index,
+                variable[0 : len(variable) - 8])
             self.variablesList.SetItem(index, 1, latest[index])
             self.variablesList.SetItem(index, 2, str(count[index]))
             index += 1
@@ -288,34 +314,19 @@ class ProductPanel(wx.Panel):
         self.relatedList.SetItems(related)
 
         ## Linked Products
-        # 
+        # Get the linked products.
+        linked = isql.getLinksTo(product)
 
-        ## Forecast
-        # Get the forecast values.
-        forecast = idata.getForecast(product)
-
-        # Remove all items from the forecast list.
-        self.forecastList.DeleteAllItems()
-
-        # Get todays date.
-        today = dt.date(1, 1, 1).today()
-
-        # Add the row that will contain the forecasts.
-        try:
-            self.forecastList.InsertItem(0,
-                str(forecast[dt.datetime(today.year + 1, 1, 1)]))
-        except KeyError:
-            fError = wx.MessageDialog(self, "Forecast not available.",
-                style=wx.ICON_ERROR)
-            fError.ShowModal()
-
-        # Add each forecast for all months.
-        for (key, value) in forecast.items():
-            self.forecastList.SetItem(0, key.month - 1, "{:.0f}".format(value))
+        # Set the items for the linked list.
+        self.linkedList.SetItems(linked)
 
         ## History
         # Get the historical values.
-        history = idata.getData(product, "finished_goods")
+        history = idata.getData(product, "finished_goods_monthly")
+
+        # Remove all items from the forecast and history list.
+        self.forecastList.DeleteAllItems()
+        self.historyList.DeleteAllItems()
 
         # Convert the data into overlapped form.
         try:
@@ -326,13 +337,13 @@ class ProductPanel(wx.Panel):
                 style=wx.ICON_ERROR)
             hError.ShowModal()
 
+            self.Layout()
+            return
+
         # Determine the years in the data.
         start = int(history[0][0][0 : 4])
         end = int(history[-1][0][0 : 4])
         years = list(range(start, end + 1))
-
-        # Remove all items from the forecast list.
-        self.historyList.DeleteAllItems()
 
         # Iterate over the data and add it to the list control.
         index1 = 0
@@ -348,18 +359,54 @@ class ProductPanel(wx.Panel):
                 index2 += 1
             index1 += 1
 
+        ## Forecast
+        # Get the selected method.
+        if self.buttonOne.GetValue():
+            method = "mlr"
+        else:
+            method = "ema"
+
+        # Get the forecast values.
+        forecast = idata.getForecast(product, method=method)
+
+        # Get todays date.
+        today = dt.date(1, 1, 1).today()
+
+        # Add the row that will contain the forecasts.
+        try:
+            self.forecastList.InsertItem(0,
+                str(forecast[dt.datetime(today.year + 1, 1, 1)]))
+        except KeyError:
+            fError = wx.MessageDialog(self, "Forecast not available.",
+                style=wx.ICON_ERROR)
+            fError.ShowModal()
+
+            self.Layout()
+            return
+
+        # Add each forecast for all months.
+        for (key, value) in forecast.items():
+            self.forecastList.SetItem(0, key.month - 1, "{:.0f}".format(value))
+
         # Relayout the panel.
         self.Layout()
 
-    def getProduct(self, product):
+    def getProduct(self):
         """
         """
 
-        pass
+        return self.product
 
     """
     Event Handler Functions
     """
+    def onRadioButton(self, event):
+        """
+        """
+
+        # Call the set product function.
+        self.setProduct(self.getProduct())
+
     def onVariable(self, event):
         """
         """
@@ -369,7 +416,7 @@ class ProductPanel(wx.Panel):
             GetFirstSelected())
 
         # 
-        dv.DataViewer(self.nameText.GetLabel(), variable, self)
+        dv.DataViewer(self.nameText.GetLabel(), variable + "_monthly", self)
 
     def onRelated(self, event):
         """

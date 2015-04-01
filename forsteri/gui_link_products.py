@@ -24,6 +24,7 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 Import Declarations
 """
+import int_data as idata
 import int_sql as isql
 import sqlite3
 import threading as td
@@ -139,6 +140,7 @@ class LinkFrame(wx.Frame):
 
         # Open a connection to the database.
         self.connection = sqlite3.connect(isql.MASTER)
+        self.connection2 = sqlite3.connect(idata.MASTER)
 
         # Update the displayed list.
         self.initializeList(None)
@@ -150,7 +152,7 @@ class LinkFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
         # Set window properties.
-        self.SetSize((315, 338))
+        self.SetSize((315, 333))
         self.SetTitle("Link Products")
         self.Centre()
         self.Show(True)
@@ -249,6 +251,9 @@ class LinkFrame(wx.Frame):
         # Add the link to the database.
         isql.addLink(old, new, self.connection)
 
+        # Add the data link.
+        idata.linkData(old, new, self.connection2)
+
         # Update the link list.
         self.updateList(event)
 
@@ -300,10 +305,16 @@ class LinkFrame(wx.Frame):
             pass
         elif old1 != old2 and new1 == new2:
             isql.setLink(old2, new2, 1, self.connection)
+            idata.unlinkData(old1, new1, self.connection2)
+            idata.linkData(old2, new2, self.connection2)
         elif old1 == old2 and new1 != new2:
             isql.setLink(old2, new2, 2, self.connection)
+            idata.unlinkData(old1, new1, self.connection2)
+            idata.linkData(old2, new2, self.connection2)
         else:
             isql.setLink(old2, new2, old1, self.connection)
+            idata.unlinkData(old1, new1, self.connection2)
+            idata.linkData(old2, new2, self.connection2)
 
         # Update the link list
         self.updateList(event)
@@ -333,6 +344,9 @@ class LinkFrame(wx.Frame):
             # Remove the link from the database.
             isql.removeLink(old, new, self.connection)
 
+            # Remove the data link.
+            idata.unlinkData(old, new, self.connection2)
+
             # Get the next index.
             index = self.linkList.GetNextSelected(index)
 
@@ -353,6 +367,8 @@ class LinkFrame(wx.Frame):
         # Commit and close the database.
         self.connection.commit()
         self.connection.close()
+        self.connection2.commit()
+        self.connection2.close()
 
         self.Close()
 
@@ -362,6 +378,7 @@ class LinkFrame(wx.Frame):
 
         # Close the database.
         self.connection.close()
+        self.connection2.close()
 
         self.Close()
 
