@@ -368,6 +368,35 @@ def addProducts(newProducts, data, overwrite=False, connection=None):
 
     return True
 
+def getProductData(product, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the command to select all information for a product.
+    cursor.execute("""SELECT * FROM information WHERE product='{p}'""".\
+        format(p=product))
+
+    # Fetch the data.
+    data = cursor.fetchone()
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.close()
+
+    return data
+
 def getProductHash(connection=None):
     """
     """
@@ -905,7 +934,7 @@ def addMissing(basis, connection=None):
     cursor.execute("""INSERT OR IGNORE INTO missing (basis) VALUES ('{b}')""".\
         format(b=basis))
 
-    # Execute teh command to get the id of the input basis.
+    # Execute the command to get the id of the input basis.
     cursor.execute("""SELECT id FROM missing WHERE basis='{b}'""".\
         format(b=basis))
 
@@ -921,6 +950,74 @@ def addMissing(basis, connection=None):
         connection.close()
 
     return basisID
+
+def getMissing(connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Execute the command to select all missing basis.
+    cursor.execute("""SELECT id, basis FROM missing ORDER BY id""")
+
+    # Fetch the returned data.
+    missing = cursor.fetchall()
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return missing
+
+def assignMissing(product, sku, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Call the command to update the information of the product.
+    setProduct(product, {"sku": sku}, connection)
+
+    # Execute the statement to get the ID of the basis.
+    cursor.execute("""SELECT id FROM missing WHERE basis='{b}'""".\
+        format(b=sku))
+
+    # Fetch the ID.
+    count = fetchone()[0]
+
+    # Reassign the data stored to the proper product.
+    idata.changeName("TEMP-" + count, product)
+
+    # Execute the command to delete the sku from the missing list.
+    cursor.execute("""DELETE FROM missing WHERE basis='{b}'""".format(b=sku))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Commit the change to the database and close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
 
 """
 Import Information

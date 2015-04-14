@@ -24,11 +24,13 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 """
 Import Declarations
 """
+import gui_assign_missing as am
 import gui_data_manager as dm
 import gui_import_data as imd
 import gui_link_products as lp
 import gui_new_item as nif
 import gui_open_product as omp
+import gui_preferences as pref
 import gui_product as pr
 import int_data as idata
 import pro_model as pm
@@ -237,7 +239,7 @@ class MainFrame(wx.Frame):
             if len(products) == 1:
                 self.masterPanel.setProduct(products[0])
         elif returnID == wx.ID_PRINT:
-            print("Report")
+            pass
 
         # Destroy the open/manage products dialog.
         openProd.Destroy()
@@ -276,8 +278,8 @@ class MainFrame(wx.Frame):
           None
         """
 
-        # 
-        pass
+        # Create the assign missing frame.
+        am.AssignFrame(self, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
     def onLink(self, event):
         """
@@ -377,7 +379,8 @@ class MainFrame(wx.Frame):
           None
         """
 
-        pass
+        pref.PreferencesFrame(self,
+            style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
     def onDoc(self, event):
         """

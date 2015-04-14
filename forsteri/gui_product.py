@@ -405,7 +405,10 @@ class ProductPanel(wx.Panel):
         """
 
         # Call the set product function.
-        self.setProduct(self.getProduct())
+        if self.product is not None:
+            self.setProduct(self.getProduct())
+        else:
+            pass
 
     def onVariable(self, event):
         """

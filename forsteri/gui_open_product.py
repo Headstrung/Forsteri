@@ -25,8 +25,11 @@ along with Forsteri.  If not, see <http://www.gnu.org/licenses/>.
 Import Declarations
 """
 import csv
+import datetime as dt
+import int_data as idata
 import int_sql as isql
 import os.path
+import pickle
 import sqlite3
 import wx
 
@@ -334,6 +337,25 @@ class OpenDialog(wx.Dialog):
                 newProducts.append(row[0])
 
         return newData, newProducts
+
+    def siftForecast(self, forecast):
+        """
+        """
+
+        final = []
+        today = dt.date(1, 1, 1).today()
+
+        for i in range(1, 13):
+            if i > today.month:
+                year = today.year
+            else:
+                year = today.year + 1
+            try:
+                final.append(round(forecast[dt.datetime(year, i, 1)]))
+            except KeyError:
+                final.append("")
+
+        return final
 
     """
     Event Handler Functions
@@ -694,8 +716,51 @@ class OpenDialog(wx.Dialog):
         """
         """
 
-        # Close the database.
+        # Get the list of selected items.
+        products = self.getSelection()
+
+        # Get the preferences for reporting.
+        pref = pickle.load(open("../data/pref.p", "rb"))
+
+        # Get the method type.
+        method = pref["report_type"].lower()
+        if method == "auto":
+            method = None
+
+        # Open a connection to the data database.
+        dataConnection = sqlite3.connect(idata.MASTER)
+
+        # Iterate over the products selected.
+        data = {}
+        for product in products:
+            data[product] = idata.getForecast(product, method,
+                connection=dataConnection)
+
+        # Create the file dialog box.
+        fileDialog = wx.FileDialog(self, "Save file as", "", "",
+            "CSV files (*.csv)|*.csv", wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+
+        # Show the file dialog box.
+        if fileDialog.ShowModal() == wx.ID_CANCEL:
+            return
+
+        # Get the location of the save.
+        loc = fileDialog.GetPath()
+
+        # Write the data to a file.
+        with open(loc, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, delimiter=',', quotechar='|')
+            writer.writerow(["Product", "January", "February", "March",
+                "April", "May", "June", "July", "August", "September",
+                "October", "November", "December"])
+            for product in products:
+                temp = [product]
+                temp.extend(self.siftForecast(data[product]))
+                writer.writerow(temp)
+
+        # Close the database connections.
         self.connection.close()
+        dataConnection.close()
 
         # End the modal and return the print id.
         self.EndModal(wx.ID_PRINT)
