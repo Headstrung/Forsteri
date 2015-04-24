@@ -317,12 +317,12 @@ class MainFrame(wx.Frame):
         """
 
         # Create and run the EMA model thread.
-        eMAThread = td.Thread(target=pm.runEMA)
-        eMAThread.start()
+        #eMAThread = td.Thread(target=pm.runEMA)
+        #eMAThread.start()
 
         # Create and run the MLR model thread.
-        #mLRThread = td.Thread(target=pm.runMLR)
-        #mLRThread.start()
+        mLRThread = td.Thread(target=pm.runMLR)
+        mLRThread.start()
 
     def onQuit(self, event):
         """

@@ -71,7 +71,7 @@ class DataViewer(wx.Frame):
         ## Text
         # Create static text boxes.
         productText = wx.StaticText(masterPanel, label=product)
-        variableText = wx.StaticText(masterPanel, label=variable)
+        variableText = wx.StaticText(masterPanel, label=variable[:-8])
 
         ## Grid
         # Initialize the grid.

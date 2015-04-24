@@ -94,7 +94,6 @@ def runMLR(products=None):
 
     # Iterate over each product.
     for product in products:
-        print(product)
         # Get the data for the current product.
         (header, data) = idata.getAllData(product)
 
@@ -342,9 +341,3 @@ def separate(data):
     for (key, value) in data.items():
         for i in range(0, 12):
             months[i + 1] = np.column_stack(months[i + 1], )
-
-
-
-
-
-

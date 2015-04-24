@@ -57,38 +57,35 @@ class NewItemFrame(wx.Frame):
 
         ## Input Section
         # Create the input sizer.
-        contentSizer = wx.FlexGridSizer(6, 2, 5, 10)
+        contentSizer = wx.FlexGridSizer(4, 2, 5, 10)
 
         # Create a list of input texts.
-        texts = ["Name", "Class", "Category", "Subcategory", "Account"]
+        texts = ["Class", "Category", "Subcategory", "Retailer Type"]
 
         # Get the list of choices for each text.
         choices = self.pullChoices(texts)
 
         # Create the input text and controls.
-        self.inputs = dict()
+        self.inputs = {}
         for text in texts:
-            if text == "Name":
-                self.inputs[text] = wx.TextCtrl(masterPanel, size=(150, -1))
-            else:
-                self.inputs[text] = wx.ComboBox(masterPanel, size=(150, -1),
-                    choices=choices[text], style=wx.CB_READONLY|wx.CB_SORT)
+            self.inputs[text] = wx.ComboBox(masterPanel, size=(150, -1),
+                choices=choices[text], style=wx.CB_READONLY|wx.CB_SORT)
 
             # Add everything to the content sizer.
             contentSizer.AddMany([wx.StaticText(masterPanel, label=text),
                 self.inputs[text]])
 
         # Create the forecast button.
-        forecastButton = wx.Button(masterPanel, label="Forecast")
+        generateButton = wx.Button(masterPanel, label="Generate")
 
         # Bind the forecast button press to a function.
-        forecastButton.Bind(wx.EVT_BUTTON, self.onForecast)
+        generateButton.Bind(wx.EVT_BUTTON, self.onGenerate)
 
         ## Related Products
-        # Create the header static box.
+        # Create the related static box.
         relatedSB = wx.StaticBox(masterPanel, label="Related Products")
 
-        # Create the header sizer.
+        # Create the related sizer.
         relatedSizer = wx.StaticBoxSizer(relatedSB, wx.VERTICAL)
 
         # Create the list control.
@@ -99,25 +96,67 @@ class NewItemFrame(wx.Frame):
         self.relatedList.InsertColumn(0, "Product", width=140)
         self.relatedList.InsertColumn(1, "Release Value", width=140)
 
-        # Add the header list to the header sizer.
+        # Add the related list to the related sizer.
         relatedSizer.Add(self.relatedList, flag=wx.ALL, border=5)
+
+        ## Information
+        # Create the info static box.
+        infoSB = wx.StaticBox(masterPanel, label="Summary")
+
+        # Create the info sizer.
+        infoSizer = wx.StaticBoxSizer(infoSB, wx.VERTICAL)
+
+        # Create the info grid sizer.
+        infoGridSizer = wx.FlexGridSizer(7, 2, 0, 0)
+
+        # Create the info items.
+        labelItems = [wx.StaticText(masterPanel, label="Maximum:"),
+            wx.StaticText(masterPanel, label="3rd Quartile:"),
+            wx.StaticText(masterPanel, label="Average:"),
+            wx.StaticText(masterPanel, label="Median:"),
+            wx.StaticText(masterPanel, label="1st Quartile:"),
+            wx.StaticText(masterPanel, label="Minimum:")]
+
+        self.infoItems = [wx.StaticText(masterPanel, label=''),
+            wx.StaticText(masterPanel, label=''),
+            wx.StaticText(masterPanel, label=''),
+            wx.StaticText(masterPanel, label=''),
+            wx.StaticText(masterPanel, label=''),
+            wx.StaticText(masterPanel, label='')]
+
+        # Add the items to the left sizer.
+        for i in range(0, 6):
+            infoGridSizer.Add(labelItems[i], flag=wx.LEFT|wx.TOP, border=5)
+            infoGridSizer.Add(self.infoItems[i], flag=wx.LEFT|wx.TOP, border=5)
+        infoGridSizer.AddSpacer(5)
+
+        # 
+        #infoGridSizer.AddGrowableCol(0)
+
+        # Add the  sizer to the info sizer.
+        infoSizer.Add(infoGridSizer, flag=wx.EXPAND)
 
         ## Frame Operations
         # Add everything to the master sizer.
         masterSizer.Add(contentSizer, flag=wx.TOP|wx.ALIGN_CENTER, border=10)
-        masterSizer.Add(forecastButton, flag=wx.ALL|wx.ALIGN_CENTER, border=5)
+        masterSizer.Add(generateButton, flag=wx.ALL|wx.ALIGN_CENTER, border=5)
         masterSizer.Add(relatedSizer, flag=wx.LEFT|wx.RIGHT|wx.BOTTOM|
             wx.ALIGN_CENTER, border=5)
+        masterSizer.Add(infoSizer, flag=wx.ALL|wx.ALIGN_CENTER|wx.EXPAND,
+            border=5)
 
         # Set the sizer for the master panel.
         masterPanel.SetSizer(masterSizer)
 
         # Set window properties.
-        self.SetSize((300, 400))
+        self.SetSize((328, 577))
         self.SetTitle("New Item Forecast")
         self.Centre()
         self.Show(True)
 
+    """
+    Helper Functions
+    """
     def pullChoices(self, tiers):
         """
         """
@@ -125,16 +164,48 @@ class NewItemFrame(wx.Frame):
         # Get the choices for each tier.
         choices = dict()
         for tier in tiers:
-            if tier == "Name":
-                pass
-            else:
-                choice = ['']
-                choice.extend(isql.getForTier(tier))
-                choices[tier] = choice
+            choice = ['']
+            choice.extend(isql.getForTier(tier))
+            choices[tier] = choice
 
         return choices
 
-    def onForecast(self, event):
+    def summary(self, data):
+        """
+        """
+
+        # Copy, find the length, and sort the data.
+        dataCopy = data.copy()
+        dataLen = len(dataCopy)
+        dataCopy.sort()
+
+        # Find the maximum and mean of the data.
+        summary = [dataCopy[-1]]
+        summary.append(sum(dataCopy) / dataLen)
+
+        # Iterate over each quartile.
+        for i in range(3, 0, -1):
+            q = i * (dataLen - 1)
+            summary.append(self.quartile(dataCopy, q // 4, q % 4))
+
+        # Find the minimum.
+        summary.append(dataCopy[0])
+
+        # Swap the mean.
+        summary[1], summary[2] = summary[2], summary[1]
+
+        return summary
+
+    def quartile(self, data, i, r):
+        """
+        """
+
+        return data[i] + (r / 4) * (data[i + 1] - data[i])
+
+    """
+    Event Handlers
+    """
+    def onGenerate(self, event):
         """
         """
 
@@ -152,7 +223,6 @@ class NewItemFrame(wx.Frame):
 
         # Get the data from the selections.
         description = selections.copy()
-        del description["Name"]
         products = [x[0] for x in isql.getData(description)]
 
         # Remove all items from the list control and reset the index.
@@ -160,15 +230,30 @@ class NewItemFrame(wx.Frame):
 
         # 
         index = 0
+        first = []
         for product in products:
-            self.relatedList.InsertItem(index, product)
             try:
-                self.relatedList.SetItem(index, 1, str(idata.getData(product,
-                    "finished_goods", connection=connection)[0][1]))
-            except IndexError:
-                self.relatedList.SetItem(index, 1, "0")
+                first.append(idata.getData(product, "finished_goods_monthly",
+                    connection=connection)[0][1])
 
-            index += 1
+                self.relatedList.InsertItem(index, product)
+                self.relatedList.SetItem(index, 1, str(int(first[index])))
+
+                index += 1
+            except IndexError:
+                continue
+
+        # Get the summary statistics.
+        try:
+            summary = self.summary(first)
+        except IndexError:
+            return
+
+        # Set each value.
+        i = 0
+        for item in self.infoItems:
+            item.SetLabel(str(round(summary[i])))
+            i += 1
 
 """
 Start Application
@@ -179,7 +264,7 @@ def main():
     """
 
     app = wx.App()
-    NewItemFrame(None, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
+    NewItemFrame(None, style=wx.DEFAULT_FRAME_STYLE)#^wx.RESIZE_BORDER)
     app.MainLoop()
 
 if __name__ == '__main__':

@@ -317,7 +317,7 @@ def getAllData(product, connection=None):
 
     # Check for finished goods monthly.
     if "finished_goods_monthly" not in variables:
-        print("Finished goods monthly was not found in the database.")
+        #print("Finished goods monthly was not found in the database.")
         return None, None
 
     # Create the repeated strings.
@@ -577,6 +577,46 @@ strftime('%Y-%m', date), product ORDER BY product;""".format(vr=variableRe,
     return True
 
 """
+Error
+"""
+def updateError(meth="mlr", connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Create a cursor from the connection.
+    cursor = connection.cursor()
+
+    # Get the error values.
+    cursor.execute("""SELECT fg.date, fg.product,
+(fg.value-forecast.{m})/fg.value FROM finished_goods_monthly AS fg INNER JOIN
+forecast ON fg.date=forecast.date AND fg.product=forecast.product""".\
+        format(m=meth))
+
+    # Fetch the error data.
+    errors = cursor.fetchall()
+
+    # Iterate over all months and products and update the error values.
+    for error in errors:
+        cursor.execute("""UPDATE forecast SET {m}_error={e} WHERE date={d} AND
+product={p}""".format(m=meth, e=error[2], d=error[0], p=error[1]))
+
+    # Close the cursor.
+    cursor.close()
+
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+"""
 Linking
 """
 def linkData(old, new, connection=None):
@@ -664,6 +704,7 @@ product='{n}' AND value={val}""".format(v=variable, d=point[0], n=new,
         connection.close()
 
     return True
+
 """
 Helper/Utility Functions
 """
