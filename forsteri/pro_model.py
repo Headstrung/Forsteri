@@ -31,6 +31,8 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 import sqlite3
+import threading as td
+import wx
 
 """
 Constant Declarations
@@ -40,13 +42,44 @@ Constant Declarations
 """
 Main Functions
 """
-def runEMA(products=None):
+def runAll(products=None):
     """
-    Run the exponential moving avergae model for the given products.
     """
 
     # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)
+
+    # Get all products if none are given.
+    if products is None:
+        products = isql.getProductNames()
+
+    # Run the EMA model.
+    runEMA(products, connection)
+
+    # Run the MLR model.
+    runMLR(products, connection)
+
+    # Run the Naive model.
+    runNaive(products, connection)
+
+    # Commit and close the connection.
+    connection.commit()
+    connection.close()
+
+    print("All models complete!")
+
+    return True
+
+def runEMA(products=None, connection=None):
+    """
+    Run the exponential moving avergae model for the given products.
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
 
     # Get all products if none are given.
     if products is None:
@@ -73,20 +106,24 @@ def runEMA(products=None):
         # Add the forecasts to the database.
         idata.updateForecast(product, "ema", average, connection)
 
-    # Commit and close the connection.
-    connection.commit()
-    connection.close()
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
 
     return True
 
-def runMLR(products=None):
+def runMLR(products=None, connection=None):
     """
     Run the multiple linear regression model for the given products with all
     available variables.
     """
 
-    # Open a connection to the data database.
-    connection = sqlite3.connect(idata.MASTER)
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
 
     # Get all products if none are given.
     if products is None:
@@ -126,9 +163,60 @@ def runMLR(products=None):
         # Add the forecast values to the database.
         idata.updateForecast(product, "mlr", forecast, connection)
 
-    # Commit and close the connection.
-    connection.commit()
-    connection.close()
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
+
+    return True
+
+def runNaive(products=None, connection=None):
+    """
+    """
+
+    # Open the master database if it is not supplied.
+    flag = False
+    if connection is None:
+        connection = sqlite3.connect(MASTER)
+        flag = True
+
+    # Get all products if none are given.
+    if products is None:
+        products = isql.getProductNames()
+
+    # Get the date.
+    today = dt.date(1, 1, 1).today()
+
+    # Get the finished goods data.
+    for product in products:
+        data = idata.getData(product, "finished_goods_monthly", connection)
+
+        # Extract the last 12 data points.
+        forecast = data[-12:]
+
+        # Convert the dates to be just the months.
+        forecast = {dt.datetime.strptime(x[0], "%Y-%m-%d").month: x[1] for x\
+            in forecast}
+
+        # Pad forecast with NULLs if it is less than length 12.
+        if len(forecast) < 12:
+            for i in range(1, 13):
+                try:
+                    forecast[i]
+                except KeyError:
+                    forecast[i] = "NULL"
+
+        # Sort by month.
+        forecast = sorted(forecast.items(), key=lambda s: s[0])
+
+        # Add the forecast values to the database.
+        idata.updateForecast(product, "naive", [x[1] for x in forecast],
+            connection)
+
+    # Close the connection.
+    if flag:
+        connection.commit()
+        connection.close()
 
     return True
 

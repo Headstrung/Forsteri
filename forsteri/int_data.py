@@ -377,7 +377,7 @@ def updateForecast(product, method, forecast, connection=None):
     # Create a cursor from the connection.
     cursor = connection.cursor()
 
-    # Execute the statement to indert the data into the database.
+    # Execute the statement to insert the data into the database.
     for month in range(0 ,12):
         if month + 1 > today.month:
             date = dt.date(today.year, month + 1, 1)
@@ -740,6 +740,8 @@ def systematize():
     # Close and commit the connection.
     connection.commit()
     connection.close()
+
+    print("Systematize complete!")
 
 def toSQLName(text):
     """

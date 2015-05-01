@@ -113,7 +113,7 @@ class MainFrame(wx.Frame):
         """
 
         ## File
-        # Create the File menu..
+        # Create the File menu.
         fileMenu = wx.Menu()
 
         # Create the File menu items.
@@ -128,9 +128,10 @@ class MainFrame(wx.Frame):
         assignMissing = wx.MenuItem(utilities, wx.ID_JUMP_TO,
             "&Assign Missing")
         linkProducts = wx.MenuItem(utilities, wx.ID_CONVERT, "&Link Products")
-        systematizeDB = wx.MenuItem(utilities, wx.ID_UP,
+        systematizeDB = wx.MenuItem(utilities, wx.ID_SORT_ASCENDING,
             "&Systematize Database")
         runModels = wx.MenuItem(utilities, wx.ID_EXECUTE, "&Run Models")
+        updateErrors = wx.MenuItem(utilities, wx.ID_UP, "&Update Errors")
 
         # Add items to the Utilities sub menu.
         utilities.Append(assignMissing)
@@ -138,6 +139,7 @@ class MainFrame(wx.Frame):
         utilities.AppendSeparator()
         utilities.Append(systematizeDB)
         utilities.Append(runModels)
+        utilities.Append(updateErrors)
 
         # Add items to the File menu.
         fileMenu.Append(openProducts)
@@ -194,6 +196,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onLink, linkProducts)
         self.Bind(wx.EVT_MENU, self.onSystematize, systematizeDB)
         self.Bind(wx.EVT_MENU, self.onModel, runModels)
+        self.Bind(wx.EVT_MENU, self.onUpdate, updateErrors)
         self.Bind(wx.EVT_MENU, self.onQuit, quit)
         self.Bind(wx.EVT_MENU, self.onDataManager, dataManager)
         self.Bind(wx.EVT_MENU, self.onConn, connections)
@@ -316,13 +319,20 @@ class MainFrame(wx.Frame):
         """
         """
 
-        # Create and run the EMA model thread.
-        #eMAThread = td.Thread(target=pm.runEMA)
-        #eMAThread.start()
+        # Run the models.
+        modelThread = td.Thread(target=pm.runAll)
+        modelThread.start()
 
-        # Create and run the MLR model thread.
-        mLRThread = td.Thread(target=pm.runMLR)
-        mLRThread.start()
+    def onUpdate(self, event):
+        """
+        """
+
+        # Create the update error threads.
+        threads = [td.Thread(target=idata.updateError, args=(x)) for x in\
+            ["mlr", "ema", "naive"]]
+
+        # Start the update error threads.
+        [thread.start() for thread in threads]
 
     def onQuit(self, event):
         """
@@ -394,7 +404,9 @@ class MainFrame(wx.Frame):
           None
         """
 
-        sp.Popen("../doc/Forsteri.pdf", shell=True)
+        sp.Popen("firefox ../doc/_build/html/index.html", shell=True)
+        #wb.open_new_tab("../doc/_build/html/index.html")
+        #sp.Popen("../doc/Forsteri.pdf", shell=True)
 
     def onHelp(self, event):
         """

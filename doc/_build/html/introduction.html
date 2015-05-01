@@ -31,6 +31,7 @@
 
   
     <link rel="top" title="Forsteri 0.0.1 documentation" href="index.html"/>
+        <link rel="next" title="Getting Started" href="getting-started.html"/>
         <link rel="prev" title="Forsteri 0.0.1 documentation" href="index.html"/> 
 
   
@@ -64,6 +65,18 @@
           
               <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#linux">Linux</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#windows">Windows</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="opening-products.html">Openeing Products</a></li>
+<li class="toctree-l1"><a class="reference internal" href="new-item-forecasting.html">New Item Forecasting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="importing-data.html">Importing Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assigning-missing-products.html">Assigning Missing Products</a></li>
+<li class="toctree-l1"><a class="reference internal" href="linking-products.html">Linking Products</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database-maintenance.html">Database Maintenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="managing-data.html">Managing Data</a></li>
 </ul>
 
           
@@ -101,13 +114,20 @@
             
   <div class="section" id="introduction">
 <h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
-<p>A main goal of this software is to decompose and manage high dimensional data from a variety of sources. The motivation came from the need to parse different tabular data files in varying layouts and formats. The minimum requirements to decompose a file are:</p>
+<p>A main goal of this software is to decompose and manage high dimensional data from a variety of sources.
+The motivation came from the need to parse different tabular data files in varying layouts and formats.
+The minimum requirements to decompose a file are:</p>
 <ol class="arabic simple">
 <li>A header row is defined which contains a descriptive element for each column.</li>
 <li>The columns are homogeneous.</li>
 </ol>
-<p>The general theory behind how the decomposition works is that each column can be related to a variable in the system. This includes general items like a basis or date, if the data is a time series, and specific items like point of sale or finished goods, that may be domain specific.</p>
-<p>Once the data has been extracted from the files, it can be analyzed and assist the user in making decisions. The end game of this software is to be able to make predictions about future values of an independent variable, in this case finished goods. The forecasting models included in this software are multiple linear regression, exponential smoothing, and autoregressive-moving-average. The first model is most useful when the dimensionality is greater than one. The last two will produce better results over a single dimension.</p>
+<p>The general theory behind how the decomposition works is that each column can be related to a variable in the system.
+This includes general items like a basis or date, if the data is a time series, and specific items like point of sale or finished goods, that may be domain specific.</p>
+<p>Once the data has been extracted from the files, it can be analyzed and assist the user in making decisions.
+The end game of this software is to be able to make predictions about future values of an independent variable, in this case finished goods.
+The forecasting models included in this software are multiple linear regression, exponential smoothing, and autoregressive-moving-average.
+The first model is most useful when the dimensionality is greater than one.
+The last two will produce better results over a single dimension.</p>
 </div>
 
 
@@ -115,6 +135,8 @@
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="getting-started.html" class="btn btn-neutral float-right" title="Getting Started">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral" title="Forsteri 0.0.1 documentation"><span class="fa fa-arrow-circle-left"></span> Previous</a>

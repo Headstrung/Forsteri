@@ -1,0 +1,7 @@
+==========
+Navigating
+==========
+
+After opening the software this frame will be displayed.
+
+.. image:: _images/opened.png

@@ -167,13 +167,15 @@ class ProductPanel(wx.Panel):
         forecastText.SetFont(infoFont)
 
         # Create the radio buttons.
-        self.buttonOne = wx.RadioButton(self, label="Method 1",
+        self.buttonOne = wx.RadioButton(self, label="MLR",
             style=wx.RB_GROUP)
-        self.buttonTwo = wx.RadioButton(self, label="Method 2")
+        self.buttonTwo = wx.RadioButton(self, label="EMA")
+        self.buttonThree = wx.RadioButton(self, label="Naive")
 
         # Bind the buttons to functions.
         self.buttonOne.Bind(wx.EVT_RADIOBUTTON, self.onRadioButton)
         self.buttonTwo.Bind(wx.EVT_RADIOBUTTON, self.onRadioButton)
+        self.buttonThree.Bind(wx.EVT_RADIOBUTTON, self.onRadioButton)
 
         # Add the items to the type sizer.
         typeSizer.Add(forecastText, flag=wx.LEFT|wx.TOP|wx.ALIGN_LEFT,
@@ -182,6 +184,8 @@ class ProductPanel(wx.Panel):
         typeSizer.Add(self.buttonOne, flag=wx.TOP, border=5)
         typeSizer.AddSpacer(15)
         typeSizer.Add(self.buttonTwo, flag=wx.TOP, border=5)
+        typeSizer.AddSpacer(15)
+        typeSizer.Add(self.buttonThree, flag=wx.TOP, border=5)
 
         # Create the forecast list control.
         self.forecastList = wx.ListCtrl(self, size=(-1, 60),
@@ -363,8 +367,10 @@ class ProductPanel(wx.Panel):
         # Get the selected method.
         if self.buttonOne.GetValue():
             method = "mlr"
-        else:
+        elif self.buttonTwo.GetValue():
             method = "ema"
+        else:
+            method = "naive"
 
         # Get the forecast values.
         forecast = idata.getForecast(product, method=method)
@@ -373,16 +379,7 @@ class ProductPanel(wx.Panel):
         today = dt.date(1, 1, 1).today()
 
         # Add the row that will contain the forecasts.
-        try:
-            self.forecastList.InsertItem(0,
-                str(forecast[dt.datetime(today.year + 1, 1, 1)]))
-        except KeyError:
-            fError = wx.MessageDialog(self, "Forecast not available.",
-                style=wx.ICON_ERROR)
-            fError.ShowModal()
-
-            self.Layout()
-            return
+        self.forecastList.InsertItem(0, "")
 
         # Add each forecast for all months.
         for (key, value) in forecast.items():

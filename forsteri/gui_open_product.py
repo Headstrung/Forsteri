@@ -185,6 +185,12 @@ class OpenDialog(wx.Dialog):
         self.editButton.Bind(wx.EVT_BUTTON, self.onEdit)
         self.deleteButton.Bind(wx.EVT_BUTTON, self.onDelete)
 
+        # Add tool tips to the buttons.
+        self.addButton.SetToolTip("Add a product to the database. Hover " +\
+            "over to switch to multi-add mode.")
+        self.editButton.SetToolTip("Edit the selected product(s).")
+        self.deleteButton.SetToolTip("Delete the selected product(s).")
+
         ## Finish Buttons
         # Create the finish sizer.
         finishSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -207,6 +213,13 @@ class OpenDialog(wx.Dialog):
         openButton.Bind(wx.EVT_BUTTON, self.onOpen)
         applyButton.Bind(wx.EVT_BUTTON, self.onApply)
         cancelButton.Bind(wx.EVT_BUTTON, self.onCancel)
+
+        # Add tool tips to the buttons.
+        reportButton.SetToolTip("Generate a forecast report for the selected" +
+            " product(s).")
+        openButton.SetToolTip("Open the selected product.")
+        applyButton.SetToolTip("Record any changes to products.")
+        cancelButton.SetToolTip("Cancel any changes to products and close.")
 
         ## Key Bindings
         # Create a new id for selecting all.

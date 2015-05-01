@@ -7,15 +7,23 @@
 Forsteri |version| documentation
 ================================
 
-Welcome! This is the documentation for Forsteri |version|, last updated April 24, 2015.
+Welcome! This is the documentation for Forsteri |version|, last updated |today|.
 
 Contents:
 =========
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   introduction
+    introduction
+    getting-started
+    opening-products
+    new-item-forecasting
+    importing-data
+    assigning-missing-products
+    linking-products
+    database-maintenance
+    managing-data
 
 .. Indices and tables:
 .. ===================
@@ -26,5 +34,3 @@ Contents:
 
 .. Meta information:
 .. =================
-
-

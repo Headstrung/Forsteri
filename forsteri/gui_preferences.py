@@ -67,7 +67,7 @@ class PreferencesFrame(wx.Frame):
         row1Label = wx.StaticText(masterPanel, label="Forecast Type")
 
         # Create the list of choices for the first row.
-        choice1 = ["Auto", "MLR", "EMA", "ARMA"]
+        choice1 = ["Auto", "MLR", "EMA", "Naive"]
 
         # Create the object for the first row.
         self.row1Obj = wx.ComboBox(masterPanel, size=(150, -1),
