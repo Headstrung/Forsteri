@@ -39,7 +39,7 @@ Package Contents
 Usage
 -----
 
-Full documentation is available at http://Headstrung.github.io/Forsteri
+Full documentation is available at http://achawkins.github.io/Forsteri/
 
 Supported Operating Environment
 -------------------------------
