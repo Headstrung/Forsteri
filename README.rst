@@ -1,8 +1,7 @@
 Forsteri
 ========
 
-Forsteri is forecasting and data managing software developed for use in the
-manufacturing stage of the supply chain.
+Forsteri is forecasting and data managing software developed for use in the manufacturing stage of the supply chain.
 
 Installation
 ------------
@@ -13,7 +12,7 @@ Install with ``pip``::
 
 Install from source::
 
-    git clone https://github.com/Headstrung/Forsteri.git
+    git clone https://github.com/achawkins/Forsteri
     cd Forsteri
     python setup.py install
 
@@ -27,8 +26,7 @@ Package Contents
         Native data including preferences and imported files.
 
     doc/
-        Sphinx documentation in reStructuredText.
-        To generate the HTML:
+        Sphinx documentation in reStructuredText. To generate the HTML::
 
             cd doc/
             make html
@@ -68,7 +66,7 @@ Supports Python 2.7. Uses ``wx``, ``webbrowser``, ``sqlite3``,
 License
 -------
 
-All code contained in this repository is Copyright 2015-Present Andrew Hawkins.
+All code contained in this repository is Copyright 2015-Present Andrew C. Hawkins.
 
 This code is released under the MIT license. Please see the LICENSE file for
 more details.
@@ -76,7 +74,7 @@ more details.
 Contributors
 ------------
 
-* Andrew Hawkins <andrewh@pqmfg.com>
+* Andrew C. Hawkins <andrewh@pqmfg.com>
 
 Changelog
 ---------
