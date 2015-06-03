@@ -26,6 +26,7 @@ THE SOFTWARE.
 Import Declarations
 """
 import datetime as dt
+import os
 import re
 import sqlite3
 import sys
@@ -35,10 +36,10 @@ from forsteri.interface import data as idata
 """
 Constant Declarations
 """
-#DATA = "/mnt/forecastdb/"
-#DATA = "../data/"
-#DATA = "data/"
-DATA = "J:\\"
+if os.name == "nt":
+    DATA = "J:\\"
+elif os.name == "posix":
+    DATA = "/mnt/forecastdb/"
 MASTER = ''.join([DATA, "master.db"])
 
 """

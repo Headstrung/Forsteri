@@ -28,16 +28,17 @@ THE SOFTWARE.
 Import Declarations
 """
 import datetime as dt
+import os
 import sqlite3
 import sys
 
 """
 Constant Declarations
 """
-#DATA = "/mnt/forecastdb/"
-#DATA = "../data/"
-#DATA = "data/"
-DATA = "J:\\"
+if os.name == "nt":
+    DATA = "J:\\"
+elif os.name == "posix":
+    DATA = "/mnt/forecastdb/"
 MASTER = ''.join([DATA, "data.db"])
 
 """
