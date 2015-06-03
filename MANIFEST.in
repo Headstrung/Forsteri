@@ -1,0 +1,4 @@
+include DESCRIPTION.rst
+include LICENSE
+include README.rst
+include data/*
