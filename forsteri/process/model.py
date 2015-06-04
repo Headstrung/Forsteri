@@ -45,16 +45,12 @@ Constant Declarations
 """
 Main Functions
 """
-def runAllErrors(products=None):
+def runAllErrors():
     """
     """
 
     # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)
-
-    # Get all products if none are given.
-    if products is None:
-        products = isql.getProductNames()
 
     # Find the MLR errors.
     idata.updateError("mlr", connection)

@@ -609,18 +609,19 @@ def updateError(meth="mlr", connection=None):
     cursor = connection.cursor()
 
     # Get the error values.
-    cursor.execute("""SELECT fg.date, fg.product,
-(fg.value-forecast.{m})/fg.value FROM finished_goods_monthly AS fg INNER JOIN
-forecast ON fg.date=forecast.date AND fg.product=forecast.product""".\
-        format(m=meth))
+    cursor.execute("""SELECT fg.date, fg.product, fg.value-forecast.{m} FROM
+finished_goods_monthly AS fg INNER JOIN forecast ON fg.date=forecast.date AND
+fg.product=forecast.product""".format(m=meth))
 
     # Fetch the error data.
     errors = cursor.fetchall()
 
     # Iterate over all months and products and update the error values.
     for error in errors:
-        cursor.execute("""UPDATE forecast SET {m}_error={e} WHERE date={d} AND
-product={p}""".format(m=meth, e=error[2], d=error[0], p=error[1]))
+        if error[2] is None:
+            continue
+        cursor.execute("""UPDATE forecast SET {m}_error={e} WHERE date='{d}'
+AND product='{p}'""".format(m=meth, e=error[2], d=error[0], p=error[1]))
 
     # Close the cursor.
     cursor.close()

@@ -321,7 +321,7 @@ def decomposeCut(source, dateFormat, shift=False):
 
     # Create the file info dictionary.
     fileInfo = {"location": source,
-        "date_of_import": dateNow.strftime("%Y-%m-%d %H:%M:%S"),
+        "date_of_import": dateNow.strftime("%Y-%m-%d %H_%M_%S"),
         "date_format": dateFormat}
 
     # Add the import to the database.
