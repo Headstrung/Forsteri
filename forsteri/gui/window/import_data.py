@@ -221,6 +221,9 @@ class ImportFrame(wx.Frame):
         self.headerList.InsertColumn(1, "Changed", width=170)
         self.headerList.InsertColumn(2, "Reason", width=170)
 
+        # Bind double clicking a row to changing its match.
+        self.headerList.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.onHeader)
+
         # Add the header list to the header sizer.
         headerSizer.Add(self.headerList, flag=wx.ALL, border=5)
 
@@ -321,6 +324,21 @@ class ImportFrame(wx.Frame):
     """
     Event Handler Functions
     """
+    def onHeader(self, event):
+        """
+        """
+
+        index = event.GetIndex()
+        data = [self.headerList.GetItemText(index, i) for i in [0, 1, 2]]
+
+        if data[2] == "Missing":
+            headerDlg = HeaderDialog(data, self)
+            headerDlg.ShowModal()
+            self.displayChange(self.filePicker.GetPath(),
+                self.dfEntry.GetValue())
+        else:
+            return
+
     def onFile(self, event):
         """
         """
@@ -584,6 +602,71 @@ class VariableDialog(wx.Dialog):
 
         # Get the value of the variable combo box.
         return self.varCombo.GetValue()
+
+class HeaderDialog(wx.Dialog):
+    """
+    """
+
+    def __init__(self, data, *args, **kwargs):
+        """
+        """
+
+        # Initialize by the parent's constructor.
+        super(HeaderDialog, self).__init__(*args, **kwargs)
+
+        # Create the master panel.
+        masterPanel = wx.Panel(self)
+
+        # Create the master sizer.
+        masterSizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Create the text values.
+        text = wx.StaticText(masterPanel, label='Change "' + data[0] + '" to')
+
+        # Create the combo box for change selection.
+        self.changeCB = wx.ComboBox(masterPanel, value=data[1],
+            choices=isql.getVariables())
+
+        # Create the finish sizer.
+        finishSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        # Create the finish buttons.
+        okButton = wx.Button(masterPanel, id=wx.ID_OK)
+        cancelButton = wx.Button(masterPanel, id=wx.ID_CANCEL)
+
+        # Bind buttons to actions.
+        okButton.Bind(wx.EVT_BUTTON, self.onOK)
+
+        # Add the finish buttons to the sizer.
+        finishSizer.AddMany([okButton, (5, 0), cancelButton])
+
+        # Add everything to the master sizer.
+        masterSizer.Add(text, flag=wx.ALL|wx.ALIGN_CENTER, border=5)
+        masterSizer.Add(self.changeCB, flag=wx.LEFT|wx.RIGHT|wx.ALIGN_CENTER,
+            border=5)
+        masterSizer.AddSpacer(9)
+        masterSizer.Add(wx.StaticLine(masterPanel, size=(290, 2)),
+            flag=wx.ALIGN_CENTER)
+        masterSizer.AddSpacer(9)
+        masterSizer.Add(finishSizer, flag=wx.RIGHT|wx.BOTTOM|wx.ALIGN_RIGHT,
+            border=5)
+
+        # Set the alias.
+        self.alias = data[0]
+
+        # Set the master sizer.
+        masterPanel.SetSizer(masterSizer)
+
+        # Set the size of the window.
+        self.SetSize((300, 150))
+
+    def onOK(self, event):
+        """
+        """
+
+        isql.addAlias(self.changeCB.GetStringSelection(), self.alias)
+
+        self.EndModal(wx.ID_OK)
 
 """
 Start Application

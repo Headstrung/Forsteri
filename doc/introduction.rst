@@ -8,6 +8,7 @@ The minimum requirements to decompose a file are:
 
 #. A header row is defined which contains a descriptive element for each column.
 #. The columns are homogeneous.
+#. The file has been saved in the comma separated values format.
 
 The general theory behind how the decomposition works is that each column can be related to a variable in the system.
 This includes general items like a basis or date, if the data is a time series, and specific items like point of sale or finished goods, that may be domain specific.

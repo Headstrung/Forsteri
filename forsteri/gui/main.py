@@ -384,7 +384,7 @@ class Main(wx.Frame):
           None
         """
 
-        sp.Popen("firefox ../doc/_build/html/index.html", shell=True)
+        sp.Popen("firefox achawkins.github.io/Forsteri", shell=True)
 
     def on_help(self, event):
         """

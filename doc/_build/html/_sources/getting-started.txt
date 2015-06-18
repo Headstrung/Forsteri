@@ -1,18 +1,27 @@
-===============
 Getting Started
 ===============
 
 Linux
-=====
+-----
 
-    To open the software, run the command ``$ python gui.py`` from the terminal.
-    You should also make sure you have the Python 3 version.
-    If you have installed from the windows branch then use Python 2.
+To get the source, clone it from Github with 
+
+::
+
+    $ git clone http://github.com/achawkins/Forsteri
+
+Now run the command
+
+::
+
+    $ ./Forsteri/bin/forsteri
+
+from the terminal to start the program.
 
 Windows
-=======
+-------
 
-    I am not sure how I am going to set this up yet, so wait for confirmation.
+    Next
 
 If you were successful in starting the program you will now see the following frame.
 
