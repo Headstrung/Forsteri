@@ -769,7 +769,7 @@ def addAlias(variable, alias, connection=None):
     cursor = connection.cursor()
 
     # Execute the statement to add the title to the database.
-    cursor.execute("""INSERT INTO variable VALUES ('{v}', '{a}')""".\
+    cursor.execute("""INSERT INTO variable VALUES ('{v}', "{a}")""".\
         format(v=variable, a=alias.lower()))
 
     # Close the cursor.
@@ -796,8 +796,8 @@ def setAlias(variable, oldAlias, newAlias, connection=None):
     cursor = connection.cursor()
 
     # Execute the statement to remove the tier title combo from the database.
-    cursor.execute("""UPDATE variable SET alias='{a2}' WHERE variable='{v}' AND
-alias='{a1}'""".format(v=variable, a1=oldAlias, a2=newAlias))
+    cursor.execute("""UPDATE variable SET alias="{a2}" WHERE variable='{v}' AND
+alias="{a1}"""".format(v=variable, a1=oldAlias, a2=newAlias))
 
     # Close the cursor.
     cursor.close()
@@ -824,7 +824,7 @@ def removeAlias(variable, alias, connection=None):
 
     # Execute the statement to remove the tier title combo from the database.
     cursor.execute("""DELETE FROM variable WHERE variable='{v}' AND
-alias='{a}'""".format(v=variable, a=alias))
+alias="{a}"""".format(v=variable, a=alias))
 
     # Close the cursor.
     cursor.close()
