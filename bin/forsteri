@@ -9,8 +9,7 @@ import subprocess as sp
 import sys
 
 if os.name == "posix":
-    sp.Popen("sudo mount -t cifs //pq-qlik-02/forecastdb /mnt/forecastdb -o \
-user=andrewh,password=fuckthis", shell=True)
+    pass
 elif os.name == "nt":
     if os.path.isdir("J:\\"):
         print("J: already exists.")
