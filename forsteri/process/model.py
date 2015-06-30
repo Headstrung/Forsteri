@@ -51,49 +51,33 @@ def runAllErrors():
 
     # Create the progress dialog box.
     progress_dlg = wx.ProgressDialog("Running Errors",
-        "Opening database connection.", wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|
-        wx.PD_REMAINING_TIME)
+        "Opening database connection.")
 
     # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)
 
-    (cont, skip) = progress_dlg.Update(10, "Connection initialized, \
-running MLR errors.")
-    if not cont:
-        return False
+    progress_dlg.Update(10, "Connection initialized, running MLR errors.")
 
     # Find the MLR errors.
     idata.updateError("mlr", connection)
 
-    (cont, skip) = progress_dlg.Update(40, "MLR errors complete, \
-running EMA errors.")
-    if not cont:
-        return False
+    progress_dlg.Update(40, "MLR errors complete, running EMA errors.")
 
     # Find the EMA errors.
     idata.updateError("ema", connection)
 
-    (cont, skip) = progress_dlg.Update(70, "EMA errors complete, \
-running Naive errors.")
-    if not cont:
-        return False
+    progress_dlg.Update(70, "EMA errors complete, running Naive errors.")
 
     # Find the Naive errors.
     idata.updateError("naive", connection)
 
-    (cont, skip) = progress_dlg.Update(98, "Naive errors complete, \
-commiting changes.")
-    if not cont:
-        return False
+    progress_dlg.Update(99, "Naive errors complete, commiting changes.")
 
     # Commit and close the connection.
     connection.commit()
     connection.close()
 
-    (cont, skip) = progress_dlg.Update(100, "Error process complete.")
-    if not cont:
-        return False
-
+    progress_dlg.Update(100, "Error process complete.")
     progress_dlg.Destroy()
 
     return True
@@ -110,52 +94,34 @@ def runAll(products=None):
     # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)
 
-    (cont, skip) = progress_dlg.Update(5, "Connection initialized, \
-gathering products.")
-    if not cont:
-        return False
+    progress_dlg.Update(5, "Connection initialized, gathering products.")
 
     # Get all products if none are given.
     if products is None:
         products = isql.getProductNames()
 
-    (cont, skip) = progress_dlg.Update(10, "Products gathered, running EMA \
-model.")
-    if not cont:
-        return False
+    progress_dlg.Update(10, "Products gathered, running EMA model.")
 
     # Run the EMA model.
     runEMA(products, connection)
 
-    (cont, skip) = progress_dlg.Update(40, "EMA model complete, running MLR \
-model.")
-    if not cont:
-        return False
+    progress_dlg.Update(40, "EMA model complete, running MLR model.")
 
     # Run the MLR model.
     runMLR(products, connection)
 
-    (cont, skip) = progress_dlg.Update(70, "MLR model complete, running Nieve \
-model.")
-    if not cont:
-        return False
+    progress_dlg.Update(70, "MLR model complete, running Nieve model.")
 
     # Run the Naive model.
     runNaive(products, connection)
 
-    (cont, skip) = progress_dlg.Update(99, "All models complete, commiting \
-changes.")
-    if not cont:
-        return False
+    progress_dlg.Update(99, "All models complete, commiting changes.")
 
     # Commit and close the connection.
     connection.commit()
     connection.close()
 
-    (cont, skip) = progress_dlg.Update(100, "Model process complete.")
-    if not cont:
-        return False
-
+    progress_dlg.Update(100, "Model process complete.")
     progress_dlg.Destroy()
 
     return True

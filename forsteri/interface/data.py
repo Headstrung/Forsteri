@@ -757,10 +757,7 @@ gathering variables.")
         "need_for_target_inventory_level", "store_balance_on_hand",
         "target_inventory_level", "aim_store_count", "balance_on_hand"]
 
-    (cont, skip) = progress_dlg.Update(5, "Variables gathered, \
-rediscretizing.")
-    if not cont:
-        return False
+    progress_dlg.Update(5, "Variables gathered, rediscretizing.")
 
     prog = 5
     delta = 94 / len(variablesNM)
@@ -773,19 +770,13 @@ rediscretizing.")
         else:
             rediscretize(variable, connection=connection)
         prog += delta
-        (cont, skip) = progress_dlg.Update(prog, fromSQLName(variable) + \
-            " complete.")
-        if not cont:
-            return False
+        progress_dlg.Update(prog, fromSQLName(variable) + " complete.")
 
     # Close and commit the connection.
     connection.commit()
     connection.close()
 
-    (cont, skip) = progress_dlg.Update(100, "Systematize complete.")
-    if not cont:
-        return False
-
+    progress_dlg.Update(100, "Systematize complete.")
     progress_dlg.Destroy()
 
     return True
