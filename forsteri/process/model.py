@@ -81,7 +81,7 @@ running Naive errors.")
     # Find the Naive errors.
     idata.updateError("naive", connection)
 
-    (cont, skip) = progress_dlg.Update(99, "Naive errors complete, \
+    (cont, skip) = progress_dlg.Update(98, "Naive errors complete, \
 commiting changes.")
     if not cont:
         return False
