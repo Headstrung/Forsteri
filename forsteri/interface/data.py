@@ -786,6 +786,10 @@ rediscretizing.")
     if not cont:
         return False
 
+    progress_dlg.Destroy()
+
+    return True
+
 def toSQLName(text):
     """
     """

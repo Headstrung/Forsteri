@@ -49,23 +49,52 @@ def runAllErrors():
     """
     """
 
+    # Create the progress dialog box.
+    progress_dlg = wx.ProgressDialog("Running Errors",
+        "Opening database connection.", wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|
+        wx.PD_REMAINING_TIME)
+
     # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)
+
+    (cont, skip) = progress_dlg.Update(10, "Connection initialized, \
+running MLR errors.")
+    if not cont:
+        return False
 
     # Find the MLR errors.
     idata.updateError("mlr", connection)
 
+    (cont, skip) = progress_dlg.Update(40, "MLR errors complete, \
+running EMA errors.")
+    if not cont:
+        return False
+
     # Find the EMA errors.
     idata.updateError("ema", connection)
 
+    (cont, skip) = progress_dlg.Update(70, "EMA errors complete, \
+running Naive errors.")
+    if not cont:
+        return False
+
     # Find the Naive errors.
     idata.updateError("naive", connection)
+
+    (cont, skip) = progress_dlg.Update(99, "Naive errors complete, \
+commiting changes.")
+    if not cont:
+        return False
 
     # Commit and close the connection.
     connection.commit()
     connection.close()
 
-    print("All errors run!")
+    (cont, skip) = progress_dlg.Update(100, "Error process complete.")
+    if not cont:
+        return False
+
+    progress_dlg.Destroy()
 
     return True
 
@@ -74,7 +103,7 @@ def runAll(products=None):
     """
 
     # Create the progress dialog box.
-    progress_dlg = wx.ProgressDialog("Running All Models",
+    progress_dlg = wx.ProgressDialog("Running Models",
         "Opening database connection.", wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|
         wx.PD_REMAINING_TIME)
 
@@ -126,6 +155,8 @@ changes.")
     (cont, skip) = progress_dlg.Update(100, "Model process complete.")
     if not cont:
         return False
+
+    progress_dlg.Destroy()
 
     return True
 
