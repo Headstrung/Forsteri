@@ -31,6 +31,7 @@ import datetime as dt
 import os
 import sqlite3
 import sys
+import wx
 
 """
 Constant Declarations
@@ -729,8 +730,17 @@ def systematize():
     """
     """
 
+    # Create the progress dialog box.
+    progress_dlg = wx.ProgressDialog("Running Systematize",
+        "Opening database connection.")
+
     # Open a connection to the data database.
     connection = sqlite3.connect(MASTER)
+
+    (cont, skip) = progress_dlg.Update(2, "Connection initialized, \
+gathering variables.")
+    if not cont:
+        return False
 
     # Get a list of all variables.
     variables = getVariables(connection)
@@ -746,6 +756,14 @@ def systematize():
         "need_for_target_inventory_level", "store_balance_on_hand",
         "target_inventory_level", "aim_store_count", "balance_on_hand"]
 
+    (cont, skip) = progress_dlg.Update(5, "Variables gathered, \
+rediscretizing.")
+    if not cont:
+        return False
+
+    prog = 5
+    delta = 94 / len(variablesNM)
+
     # Iterate over the variables performing operations on each.
     for variable in variablesNM:
         trimLeadingZeros(variable, connection=connection)
@@ -753,12 +771,17 @@ def systematize():
             rediscretize(variable, method="singular", connection=connection)
         else:
             rediscretize(variable, connection=connection)
+        prog += delta
+        (cont, skip) = progress_dlg.Update(prog, fromSQLName(variable) + \
+            " complete.")
+        if not cont:
+            return False
 
     # Close and commit the connection.
     connection.commit()
     connection.close()
 
-    print("Systematize complete!")
+    progress_dlg.Update(100, "Systematize complete.")
 
 def toSQLName(text):
     """

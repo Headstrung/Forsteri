@@ -73,27 +73,58 @@ def runAll(products=None):
     """
     """
 
+    # Create the progress dialog box.
+    progress_dlg = wx.ProgressDialog("Running All Models",
+        "Opening database connection.")
+
     # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)
+
+    (cont, skip) = progress_dlg.Update(5, "Connection initialized, \
+gathering products.")
+    if not cont:
+        return False
 
     # Get all products if none are given.
     if products is None:
         products = isql.getProductNames()
 
+    (cont, skip) = progress_dlg.Update(10, "Products gathered, running EMA \
+model.")
+    if not cont:
+        return False
+
     # Run the EMA model.
     runEMA(products, connection)
+
+    (cont, skip) = progress_dlg.Update(40, "EMA model complete, running MLR \
+model.")
+    if not cont:
+        return False
 
     # Run the MLR model.
     runMLR(products, connection)
 
+    (cont, skip) = progress_dlg.Update(70, "MLR model complete, running Nieve \
+model.")
+    if not cont:
+        return False
+
     # Run the Naive model.
     runNaive(products, connection)
+
+    (cont, skip) = progress_dlg.Update(99, "All models complete, commiting \
+changes.")
+    if not cont:
+        return False
 
     # Commit and close the connection.
     connection.commit()
     connection.close()
 
-    print("All models complete!")
+    (cont, skip) = progress_dlg.Update(100, "Model process complete.")
+    if not cont:
+        return False
 
     return True
 

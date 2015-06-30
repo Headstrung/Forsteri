@@ -34,5 +34,6 @@ from forsteri import client
 client.ForsteriClient().run()
 
 if os.name == "posix":
-    sp.Popen("sync", shell=True)
-    sp.Popen("sudo umount /mnt/forecastdb", shell=True)
+    pass
+    #sp.Popen("sync", shell=True)
+    #sp.Popen("sudo umount /mnt/forecastdb", shell=True)
