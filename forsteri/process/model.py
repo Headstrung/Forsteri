@@ -75,7 +75,8 @@ def runAll(products=None):
 
     # Create the progress dialog box.
     progress_dlg = wx.ProgressDialog("Running All Models",
-        "Opening database connection.")
+        "Opening database connection.", wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|
+        wx.PD_REMAINING_TIME)
 
     # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)

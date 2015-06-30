@@ -732,7 +732,8 @@ def systematize():
 
     # Create the progress dialog box.
     progress_dlg = wx.ProgressDialog("Running Systematize",
-        "Opening database connection.")
+        "Opening database connection.", wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|
+        wx.PD_REMAINING_TIME)
 
     # Open a connection to the data database.
     connection = sqlite3.connect(MASTER)
@@ -781,7 +782,9 @@ rediscretizing.")
     connection.commit()
     connection.close()
 
-    progress_dlg.Update(100, "Systematize complete.")
+    (cont, skip) = progress_dlg.Update(100, "Systematize complete.")
+    if not cont:
+        return False
 
 def toSQLName(text):
     """
