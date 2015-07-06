@@ -572,8 +572,10 @@ class VariableDialog(wx.Dialog):
         masterSizer.AddSpacer(10)
         masterSizer.Add(self.varCombo, flag=wx.LEFT|wx.RIGHT|wx.ALIGN_CENTER,
             border=5)
-        masterSizer.Add(wx.StaticLine(masterPanel, size=(290, 20)),
+        masterSizer.AddSpacer(9)
+        masterSizer.Add(wx.StaticLine(masterPanel, size=(290, 2)),
             flag=wx.ALIGN_CENTER)
+        masterSizer.AddSpacer(9)
         masterSizer.Add(finishSizer, flag=wx.RIGHT|wx.BOTTOM|wx.ALIGN_RIGHT,
             border=5)
 

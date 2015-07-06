@@ -115,7 +115,7 @@ def runAll(products=None):
     # Run the Naive model.
     runNaive(products, connection)
 
-    progress_dlg.Update(99, "All models complete, commiting changes.")
+    progress_dlg.Update(98, "All models complete, commiting changes.")
 
     # Commit and close the connection.
     connection.commit()
