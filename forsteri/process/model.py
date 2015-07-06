@@ -88,8 +88,7 @@ def runAll(products=None):
 
     # Create the progress dialog box.
     progress_dlg = wx.ProgressDialog("Running Models",
-        "Opening database connection.", wx.PD_CAN_ABORT|wx.PD_ELAPSED_TIME|
-        wx.PD_REMAINING_TIME)
+        "Opening database connection.")
 
     # Open a connection to the data database.
     connection = sqlite3.connect(idata.MASTER)
@@ -115,7 +114,7 @@ def runAll(products=None):
     # Run the Naive model.
     runNaive(products, connection)
 
-    progress_dlg.Update(98, "All models complete, commiting changes.")
+    progress_dlg.Update(99, "All models complete, commiting changes.")
 
     # Commit and close the connection.
     connection.commit()
