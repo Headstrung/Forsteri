@@ -6,6 +6,8 @@ Forsteri is forecasting and data managing software developed for use in the manu
 Installation
 ------------
 
+The following installation method is currently removed for freeze testing.
+
 Install from source::
 
     git clone https://github.com/achawkins/Forsteri
@@ -62,7 +64,7 @@ Supports Python 2.7. Uses ``wx``, ``webbrowser``, ``sqlite3``,
 License
 -------
 
-All code contained in this repository is Copyright (C) 2015 - Present Andrew C. Hawkins.
+All code contained in this repository is Copyright |copy| 2015 - Present by Andrew C. Hawkins.
 
 This code is released under the MIT license. Please see the LICENSE file for
 more details.

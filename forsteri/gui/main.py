@@ -23,6 +23,7 @@ THE SOFTWARE.
 """
 
 # Import python modules.
+import os
 import subprocess as sp
 import threading as td
 import webbrowser as wb
@@ -51,7 +52,7 @@ class Main(wx.Frame):
       wx.Frame
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, path, *args, **kwargs):
         """
         Initialize the frame.
 
@@ -75,9 +76,16 @@ class Main(wx.Frame):
         # Create the master panel.
         self.masterPanel = pr.ProductPanel(self)
 
+        # Create the icon.
+        self.icon = wx.Icon(os.path.join(path, "data", "img", "forsteri.ico"),
+            wx.BITMAP_TYPE_ICO)
+
         ## Frame Operations
         # Set the menu bar
         self.SetMenuBar(self.create_menu_bar())
+
+        # Set the icon.
+        self.SetIcon(self.icon)
 
         # Set window properties.
         self.SetSize((1030, 585))
