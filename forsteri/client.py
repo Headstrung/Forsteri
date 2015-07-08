@@ -53,8 +53,7 @@ class ForsteriClient(object):
                 wx.SPLASH_CENTRE_ON_SCREEN|wx.SPLASH_TIMEOUT, 1000, None)
 
         # Create the main frame.
-        gui.Main(self.PATH, None,
-            style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
+        gui.Main(None, style=wx.DEFAULT_FRAME_STYLE^wx.RESIZE_BORDER)
 
         # Start the application main loop.
         app.MainLoop()

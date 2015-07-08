@@ -52,7 +52,7 @@ class Main(wx.Frame):
       wx.Frame
     """
 
-    def __init__(self, path, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
         Initialize the frame.
 
@@ -77,8 +77,8 @@ class Main(wx.Frame):
         self.masterPanel = pr.ProductPanel(self)
 
         # Create the icon.
-        self.icon = wx.Icon(os.path.join(path, "data", "img", "forsteri.ico"),
-            wx.BITMAP_TYPE_ICO)
+        self.icon = wx.Icon(os.path.join(idata.DATA, "Forsteri", "img",
+            "forsteri.ico"), wx.BITMAP_TYPE_ICO)
 
         ## Frame Operations
         # Set the menu bar
