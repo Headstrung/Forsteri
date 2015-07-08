@@ -4,36 +4,26 @@
 This is the executable file to start the Forsteri client.
 """
 
+# Import modules.
+import getpass
 import os
 import subprocess as sp
 import sys
 
-if os.name == "posix":
-    pass
-elif os.name == "nt":
-    if os.path.isdir("J:\\"):
-        print("J: already exists.")
-    else:
-        try:
-            sp.Popen("NET USE J: \\\\pq-qlik-02\\forecastdb", shell=True)
-        except WindowsError:
-            print("Could not mount J:.")
+# Make sure the network drive is mounted.
+if os.name == "nt" and not os.path.isdir("J:\\"):
+    try:
+        sp.Popen("NET USE J: \\\\pq-qlik-02\\forecastdb", shell=True)
+    except WindowsError:
+        raise WindowsError("Could not mount J:.")
 
+# Find the source directory and add it to the path.
 try:
-    DIR = os.path.abspath(os.path.normpath(os.path.join(__file__,
-        "..", "..", "forsteri")))
-    PDIR = os.path.normpath(os.path.join(DIR, "..", "bin"))
-    if os.path.isdir(DIR):
-        sys.path.append(os.path.dirname(DIR))
-    os.chdir(PDIR)
+    PATH = os.path.abspath(os.path.join(__file__, "..", ".."))
+    sys.path.append(PATH)
 except NameError:
-    pass
+    raise NameError("Source directory could not be found.")
 
 from forsteri import client
 
-client.ForsteriClient().run()
-
-if os.name == "posix":
-    pass
-    #sp.Popen("sync", shell=True)
-    #sp.Popen("sudo umount /mnt/forecastdb", shell=True)
+client.ForsteriClient(getpass.getuser(), PATH).run()

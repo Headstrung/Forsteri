@@ -105,8 +105,8 @@ class ProductPanel(wx.Panel):
 
         # Add columns to the list control.
         self.variablesList.InsertColumn(0, "Variable", width=150)
-        self.variablesList.InsertColumn(1, "Latest Data", width=100)
-        self.variablesList.InsertColumn(2, "Count", width=75)
+        self.variablesList.InsertColumn(1, "Latest Data", width=95)
+        self.variablesList.InsertColumn(2, "Count", width=65)
 
         # Add the list control to the sizer.
         variablesSizer.Add(self.variablesList, flag=wx.ALL, border=5)

@@ -32,9 +32,10 @@ class ForsteriClient(object):
     """
     """
 
-    def __init__(self):
+    def __init__(self, username, path):
 
-        pass
+        self.USERNAME = username
+        self.PATH = path
 
     def run(self):
         # Create the application.
