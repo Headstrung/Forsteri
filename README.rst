@@ -6,10 +6,6 @@ Forsteri is forecasting and data managing software developed for use in the manu
 Installation
 ------------
 
-Install with ``pip``::
-
-    pip install Forsteri
-
 Install from source::
 
     git clone https://github.com/achawkins/Forsteri

@@ -1,7 +1,7 @@
 #!/usr/bin/python2 -B
 
 """
-This is the executable file to start the Forsteri client.
+This is the starter script for the Forsteri client.
 """
 
 # Import modules.
@@ -10,7 +10,7 @@ import os
 import subprocess as sp
 import sys
 
-# Make sure the network drive is mounted.
+# On windows, make sure the network drive is mounted.
 if os.name == "nt" and not os.path.isdir("J:\\"):
     try:
         sp.Popen("NET USE J: \\\\pq-qlik-02\\forecastdb", shell=True)
