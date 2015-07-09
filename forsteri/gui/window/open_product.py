@@ -25,6 +25,7 @@ THE SOFTWARE.
 # Import python modules.
 import csv
 import datetime as dt
+import os
 import pickle
 import sqlite3
 import wx
@@ -731,7 +732,8 @@ class OpenDialog(wx.Dialog):
         products = self.getSelection()
 
         # Get the preferences for reporting.
-        pref = pickle.load(open("../data/pref.p", "rb"))
+        pref = pickle.load(open(os.path.join(idata.DATA, "Forsteri",
+            "pref.p"), "rb"))
 
         # Get the method type.
         method = pref["report_type"].lower()
