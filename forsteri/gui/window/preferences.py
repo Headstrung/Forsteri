@@ -159,7 +159,8 @@ class PreferencesFrame(wx.Frame):
         pref["report_type"] = self.row1Obj.GetValue()
 
         # Save the preferences into the pickle file.
-        pickle.dump(pref, open("../data/pref.p", "wb"))
+        pickle.dump(pref, open(os.path.join(idata.DATA, "Forsteri",
+            "pref.p"), "wb"))
 
         return True
 
