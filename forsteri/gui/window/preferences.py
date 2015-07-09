@@ -27,8 +27,11 @@ THE SOFTWARE.
 """
 Import Declarations
 """
+import os
 import pickle
 import wx
+
+from forsteri.interface import data as idata
 
 """
 Constant Declarations
@@ -137,7 +140,8 @@ class PreferencesFrame(wx.Frame):
         """
 
         # Load the preferences from the pickle file.
-        pref = pickle.load(open("../data/pref.p", "rb"))
+        pref = pickle.load(open(os.path.join(idata.DATA, "Forsteri",
+            "pref.p"), "rb"))
 
         # Set all of the prefernce objects.
         self.row1Obj.SetValue(pref["report_type"])
