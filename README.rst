@@ -64,7 +64,7 @@ Supports Python 2.7. Uses ``wx``, ``webbrowser``, ``sqlite3``,
 License
 -------
 
-All code contained in this repository is Copyright |copy| 2015 - Present by Andrew C. Hawkins.
+All code contained in this repository is Copyright 2015 - Present by Andrew C. Hawkins.
 
 This code is released under the MIT license. Please see the LICENSE file for
 more details.

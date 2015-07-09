@@ -392,7 +392,7 @@ class Main(wx.Frame):
           None
         """
 
-        sp.Popen("firefox achawkins.github.io/Forsteri", shell=True)
+        wb.open("http://achawkins.github.io/Forsteri", new=2)
 
     def on_help(self, event):
         """
