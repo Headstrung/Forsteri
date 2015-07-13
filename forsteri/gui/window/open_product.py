@@ -851,7 +851,7 @@ class InputDialog(wx.Dialog):
 
         # Create the text control and combo box inputs.
         self.inputObjects = []
-        for i in range(0, 6):
+        for i in range(0, 5):
             if i < 2:
                 self.inputObjects.append(wx.TextCtrl(masterPanel,
                     size=(150, -1)))
