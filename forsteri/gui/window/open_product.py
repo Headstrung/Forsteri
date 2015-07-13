@@ -148,7 +148,7 @@ class OpenDialog(wx.Dialog):
         self.productList.InsertColumn(1, "Account", width=136)
         self.productList.InsertColumn(2, "Class", width=136)
         self.productList.InsertColumn(3, "Category", width=136)
-        self.productList.InsertColumn(4, "Subcategory", width=136)
+        #self.productList.InsertColumn(4, "Subcategory", width=136)
 
         # Bind the selection of an item to a function.
         self.productList.Bind(wx.EVT_LIST_ITEM_SELECTED, self.onSelected)
@@ -257,7 +257,7 @@ class OpenDialog(wx.Dialog):
         masterPanel.SetSizer(masterSizer)
 
         # Set window properties.
-        self.SetSize((900, 528))
+        self.SetSize((900-136, 528))
         self.Centre()
 
     """
@@ -410,7 +410,7 @@ class OpenDialog(wx.Dialog):
             self.productList.SetStringItem(index, 1, product[2])
             self.productList.SetStringItem(index, 2, product[3])
             self.productList.SetStringItem(index, 3, product[4])
-            self.productList.SetStringItem(index, 4, product[5])
+            #self.productList.SetStringItem(index, 4, product[5])
             index += 1
 
     def onSelected(self, event):

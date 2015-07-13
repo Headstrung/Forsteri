@@ -65,7 +65,7 @@ class NewItemFrame(wx.Frame):
         contentSizer = wx.FlexGridSizer(4, 2, 5, 10)
 
         # Create a list of input texts.
-        texts = ["Class", "Category", "Subcategory", "Retailer Type"]
+        texts = ["Class", "Category"]#, "Subcategory", "Retailer Type"]
 
         # Get the list of choices for each text.
         choices = self.pullChoices(texts)
@@ -154,7 +154,7 @@ class NewItemFrame(wx.Frame):
         masterPanel.SetSizer(masterSizer)
 
         # Set window properties.
-        self.SetSize((328, 616))
+        self.SetSize((328, 530))
         self.SetTitle("New Item Forecast")
         self.Centre()
         self.Show(True)

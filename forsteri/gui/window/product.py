@@ -69,7 +69,7 @@ class ProductPanel(wx.Panel):
         self.accountText = wx.StaticText(self)
         self.classText = wx.StaticText(self)
         self.categoryText = wx.StaticText(self)
-        self.subcategoryText = wx.StaticText(self)
+        #self.subcategoryText = wx.StaticText(self)
 
         # Create the fonts for the static texts.
         titleFont = wx.Font(22, wx.SWISS, wx.NORMAL, wx.BOLD)
@@ -80,14 +80,14 @@ class ProductPanel(wx.Panel):
         self.accountText.SetFont(infoFont)
         self.classText.SetFont(infoFont)
         self.categoryText.SetFont(infoFont)
-        self.subcategoryText.SetFont(infoFont)
+        #self.subcategoryText.SetFont(infoFont)
 
         # Add the static text to the sizer.
         infoSizer.Add(self.nameText, flag=wx.LEFT, border=5)
         infoSizer.Add(self.accountText, flag=wx.LEFT, border=5)
         infoSizer.Add(self.classText, flag=wx.LEFT, border=5)
         infoSizer.Add(self.categoryText, flag=wx.LEFT, border=5)
-        infoSizer.Add(self.subcategoryText, flag=wx.LEFT, border=5)
+        #infoSizer.Add(self.subcategoryText, flag=wx.LEFT, border=5)
 
         ## Variables
         # Create the variables static box.
@@ -272,7 +272,7 @@ class ProductPanel(wx.Panel):
         self.accountText.SetLabel(data[2])
         self.classText.SetLabel(data[3])
         self.categoryText.SetLabel(data[4])
-        self.subcategoryText.SetLabel(data[5])
+        #self.subcategoryText.SetLabel(data[5])
 
         ## Product Variables
         # Get the variables.
