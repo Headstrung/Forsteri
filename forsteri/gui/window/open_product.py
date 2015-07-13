@@ -331,7 +331,7 @@ class OpenDialog(wx.Dialog):
         # Open the file and save it in the data variable.
         newData = []
         newProducts = []
-        with open(path, newline='') as csvFile:
+        with open(path) as csvFile:
             reader = csv.reader(csvFile, delimiter=',', quotechar='|')
             for row in reader:
                 # Find the length of the row.
