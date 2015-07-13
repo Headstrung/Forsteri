@@ -895,7 +895,7 @@ class InputDialog(wx.Dialog):
         masterPanel.SetSizer(masterSizer)
 
         # Set the size of the window.
-        self.SetSize((300, 273))
+        self.SetSize((300, 233))
 
     """
     Manipulate Functions
