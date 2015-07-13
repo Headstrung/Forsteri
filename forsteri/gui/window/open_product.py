@@ -123,7 +123,7 @@ class OpenDialog(wx.Dialog):
 
         # Create subsequent label and combo boxes, add them to the search
         # sizer, and bind them to functions.
-        for i in range(0, 4):
+        for i in range(0, 3):
             textLabels[i] = wx.StaticText(masterPanel,
                 label=LABELS[i + 2].title())
             self.inputs[i + 1] = wx.ComboBox(masterPanel, size=(150, -1),
@@ -388,7 +388,7 @@ class OpenDialog(wx.Dialog):
         self.sieve["account"] = self.inputs[1].GetStringSelection()
         self.sieve["class"] = self.inputs[2].GetStringSelection()
         self.sieve["category"] = self.inputs[3].GetStringSelection()
-        self.sieve["subcategory"] = self.inputs[4].GetStringSelection()
+        #self.sieve["subcategory"] = self.inputs[4].GetStringSelection()
 
         # Get all of the products from the database.
         data = isql.getData(self.sieve, self.connection)
