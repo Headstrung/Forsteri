@@ -10,7 +10,7 @@ The following installation method is currently removed for freeze testing.
 
 Install from source::
 
-    git clone https://github.com/achawkins/Forsteri
+    git clone https://github.com/achawkins/forsteri
     cd Forsteri
     python setup.py install
 
@@ -35,7 +35,7 @@ Package Contents
 Usage
 -----
 
-Full documentation is available at http://achawkins.github.io/Forsteri/
+Full documentation is available at http://achawkins.github.io/forsteri/
 
 Supported Operating Environment
 -------------------------------
