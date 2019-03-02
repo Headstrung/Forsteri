@@ -72,7 +72,7 @@ more details.
 Contributors
 ------------
 
-* Andrew C. Hawkins <andrewh@pqmfg.com>
+* Andrew C. Hawkins <andrew.hawkins@sbdinc.com>
 
 Changelog
 ---------
